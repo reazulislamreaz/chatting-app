@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar } from "@/components/Avatar";
 import { ProfileDetailRow } from "@/components/ProfileDetailRow";
-import { Spinner } from "@/components/Spinner";
+import { ProfileSkeleton } from "@/components/skeletons";
 import { api } from "@/lib/api";
 import { invalidateSocial } from "@/lib/invalidateCache";
 import { useUserQuery } from "@/hooks/queries";
@@ -22,7 +22,7 @@ export default function UserDetailPage() {
   const userId = params.userId as string;
   const { user: currentUser } = useAuth();
 
-  const { data: profile, isLoading: loading, error } = useUserQuery(userId);
+  const { data: profile, isPending, isFetching, error } = useUserQuery(userId);
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
@@ -83,18 +83,21 @@ export default function UserDetailPage() {
             </svg>
           </Link>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-bold text-slate-900">Profile</h1>
+            <h1 className="flex items-center gap-2 truncate text-lg font-bold text-slate-900">
+              Profile
+              {isFetching && !isPending && (
+                <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-brand-500" />
+              )}
+            </h1>
             <p className="text-xs text-slate-500">User details</p>
           </div>
         </header>
 
         <div className="page-content">
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <Spinner />
-            </div>
+          {isPending && !profile ? (
+            <ProfileSkeleton />
           ) : !profile ? null : (
-            <div className="page-container mx-auto max-w-lg space-y-4 pb-6">
+            <div className="page-container mx-auto max-w-lg animate-fade-in space-y-4 pb-6">
               <div className="card flex flex-col items-center text-center">
                 <Avatar
                   name={profile.name}

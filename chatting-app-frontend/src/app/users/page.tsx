@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
-import { Spinner } from "@/components/Spinner";
+import { UsersGridSkeleton } from "@/components/skeletons";
 import { UserCard } from "@/components/UserCard";
 import { api } from "@/lib/api";
 import { invalidateSocial } from "@/lib/invalidateCache";
@@ -23,9 +23,12 @@ export default function UsersPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const { data: users = [], isLoading, isFetching, error } = useUsersQuery(
-    debouncedSearch,
-  );
+  const {
+    data: users = [],
+    isPending,
+    isFetching,
+    error,
+  } = useUsersQuery(debouncedSearch);
 
   useEffect(() => {
     if (error) {
@@ -51,7 +54,8 @@ export default function UsersPage() {
     }
   };
 
-  const loading = isLoading || (isFetching && users.length === 0);
+  const showSkeleton = isPending && users.length === 0;
+  const isSearching = isFetching && debouncedSearch !== search;
 
   return (
     <AppLayout>
@@ -59,6 +63,7 @@ export default function UsersPage() {
         <PageHeader
           title="Discover People"
           subtitle="Browse profiles and connect with friends"
+          refreshing={isFetching && !isPending}
         />
 
         <div className="page-content">
@@ -86,17 +91,15 @@ export default function UsersPage() {
               />
             </div>
 
-            {!loading && users.length > 0 && (
+            {!showSkeleton && users.length > 0 && (
               <p className="text-sm text-slate-500">
                 {users.length} {users.length === 1 ? "person" : "people"} found
                 {search ? ` for "${search}"` : ""}
               </p>
             )}
 
-            {loading ? (
-              <div className="flex justify-center py-20">
-                <Spinner />
-              </div>
+            {showSkeleton ? (
+              <UsersGridSkeleton count={6} />
             ) : users.length === 0 ? (
               <EmptyState
                 title="No users found"
@@ -122,7 +125,11 @@ export default function UsersPage() {
                 }
               />
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div
+                className={`grid gap-3 sm:grid-cols-2 lg:grid-cols-3 ${
+                  isSearching ? "opacity-70 transition-opacity" : "animate-fade-in"
+                }`}
+              >
                 {users.map((u) => (
                   <UserCard
                     key={u.id}

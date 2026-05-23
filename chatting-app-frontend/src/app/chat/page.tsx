@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
-import { Spinner } from "@/components/Spinner";
+import { PrefetchLink } from "@/components/PrefetchLink";
+import { ChatListSkeleton } from "@/components/skeletons";
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/AuthContext";
 import { getMessagePreview } from "@/lib/messagePreview";
@@ -21,7 +21,7 @@ function formatTime(dateStr: string) {
 }
 
 export default function ChatListPage() {
-  const { chatList, loading } = useChat();
+  const { chatList, loading, isFetching } = useChat();
   const { user } = useAuth();
 
   return (
@@ -30,13 +30,12 @@ export default function ChatListPage() {
         <PageHeader
           title="Messages"
           subtitle="Your conversations with friends"
+          refreshing={isFetching && !loading}
         />
 
         <div className="page-content !p-0 sm:!p-0">
           {loading ? (
-            <div className="flex justify-center py-20">
-              <Spinner />
-            </div>
+            <ChatListSkeleton />
           ) : chatList.length === 0 ? (
             <div className="px-4 sm:px-6">
               <EmptyState
@@ -60,15 +59,17 @@ export default function ChatListPage() {
               />
             </div>
           ) : (
-            <div className="divide-y divide-surface-border">
+            <div className="divide-y divide-surface-border animate-fade-in">
               {chatList.map((chat) => {
                 const isOwnLast = chat.lastMessage?.senderId === user?.id;
                 const preview = getMessagePreview(chat.lastMessage, isOwnLast);
 
                 return (
-                  <Link
+                  <PrefetchLink
                     key={chat.user.id}
                     href={`/chat/${chat.user.id}`}
+                    prefetchUserId={chat.user.id}
+                    prefetchChat
                     className="flex items-center gap-4 px-4 py-4 transition hover:bg-white sm:px-6"
                   >
                     <Avatar
@@ -110,7 +111,7 @@ export default function ChatListPage() {
                         )}
                       </div>
                     </div>
-                  </Link>
+                  </PrefetchLink>
                 );
               })}
             </div>

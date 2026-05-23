@@ -2,12 +2,14 @@
 
 import { Toaster } from "react-hot-toast";
 import { QueryProvider } from "@/components/QueryProvider";
+import { QueryLoadingBar } from "@/components/QueryLoadingBar";
 import { AuthProvider } from "@/context/AuthContext";
 import { ChatProvider } from "@/context/ChatContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryProvider>
+      <QueryLoadingBar />
     <AuthProvider>
       <ChatProvider>
         {children}

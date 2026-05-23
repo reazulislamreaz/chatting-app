@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getUploadUrl } from "@/lib/api";
+import { VoiceMessagePlayer } from "@/components/VoiceMessagePlayer";
 import type { Message } from "@/types";
 
 interface MessageBubbleProps {
@@ -14,6 +15,7 @@ interface MessageBubbleProps {
 export function MessageBubble({ message, isOwn, onEdit, onDelete }: MessageBubbleProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const imageSrc = message.imageUrl ? getUploadUrl(message.imageUrl) : "";
+  const hasVoice = Boolean(message.voiceUrl);
   const hasText = Boolean(message.content?.trim());
   const time = new Date(message.createdAt).toLocaleTimeString([], {
     hour: "2-digit",
@@ -95,8 +97,21 @@ export function MessageBubble({ message, isOwn, onEdit, onDelete }: MessageBubbl
               />
             </a>
           )}
+          {hasVoice && message.voiceUrl && (
+            <VoiceMessagePlayer
+              src={message.voiceUrl}
+              duration={message.voiceDuration}
+              isOwn={isOwn}
+            />
+          )}
           <div
-            className={`px-3 ${imageSrc && hasText ? "py-2 pt-1" : imageSrc ? "pb-1" : "py-2"}`}
+            className={`px-3 ${
+              (imageSrc || hasVoice) && hasText
+                ? "py-2 pt-1"
+                : imageSrc || hasVoice
+                  ? "pb-1"
+                  : "py-2"
+            }`}
           >
             {hasText && (
               <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">

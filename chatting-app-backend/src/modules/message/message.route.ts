@@ -8,7 +8,10 @@ import {
   getMessagesSchema,
   markReadSchema,
 } from "./message.validation";
-import { uploadMessageImage } from "../../middleware/upload.middleware";
+import {
+  uploadMessageImage,
+  uploadMessageMedia,
+} from "../../middleware/upload.middleware";
 
 const router = Router();
 
@@ -25,7 +28,18 @@ const withImageUpload = (
   });
 };
 
-router.post("/", withImageUpload, validate(sendMessageSchema), messageController.sendMessage);
+const withMediaUpload = (
+  req: import("express").Request,
+  res: import("express").Response,
+  next: import("express").NextFunction
+) => {
+  uploadMessageMedia(req, res, (err) => {
+    if (err) return next(err);
+    next();
+  });
+};
+
+router.post("/", withMediaUpload, validate(sendMessageSchema), messageController.sendMessage);
 router.patch("/read", validate(markReadSchema), messageController.markAsRead);
 router.patch("/:id", withImageUpload, validate(updateMessageSchema), messageController.updateMessage);
 router.delete("/:id", messageController.deleteMessage);

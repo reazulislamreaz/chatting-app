@@ -26,6 +26,8 @@ export class ChatService {
           _id: mongoose.Types.ObjectId;
           content: string;
           imageUrl?: string;
+          voiceUrl?: string;
+          voiceDuration?: number;
           isDeleted?: boolean;
           senderId: mongoose.Types.ObjectId;
           createdAt: Date;
@@ -65,6 +67,8 @@ export class ChatService {
               _id: "$lastMessage._id",
               content: "$lastMessage.content",
               imageUrl: "$lastMessage.imageUrl",
+              voiceUrl: "$lastMessage.voiceUrl",
+              voiceDuration: "$lastMessage.voiceDuration",
               isDeleted: "$lastMessage.isDeleted",
               senderId: "$lastMessage.senderId",
               createdAt: "$lastMessage.createdAt",
@@ -102,6 +106,8 @@ export class ChatService {
                 id: last._id.toString(),
                 content: last.content || "",
                 imageUrl: last.imageUrl ? resolveImageUrl(last.imageUrl) : undefined,
+                voiceUrl: last.voiceUrl ? resolveImageUrl(last.voiceUrl) : undefined,
+                voiceDuration: last.voiceDuration || undefined,
                 isDeleted: Boolean(last.isDeleted),
                 senderId: last.senderId.toString(),
                 createdAt: last.createdAt,

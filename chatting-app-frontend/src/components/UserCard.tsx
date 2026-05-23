@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PrefetchLink } from "./PrefetchLink";
 import { Avatar } from "./Avatar";
 import type { User } from "@/types";
 
@@ -18,8 +18,9 @@ export function UserCard({ user, onAddFriend, sendingRequest }: UserCardProps) {
 
   return (
     <article className="card group overflow-hidden !p-0 transition hover:shadow-md">
-      <Link
+      <PrefetchLink
         href={`/users/${user.id}`}
+        prefetchUserId={user.id}
         className="flex items-center gap-3 p-4 transition hover:bg-brand-50/30"
       >
         <Avatar
@@ -52,7 +53,7 @@ export function UserCard({ user, onAddFriend, sendingRequest }: UserCardProps) {
             <p className="mt-1 truncate text-xs text-slate-400">{user.professional}</p>
           ) : null}
         </div>
-      </Link>
+      </PrefetchLink>
 
       {onAddFriend && (
         <div className="border-t border-surface-border px-4 py-3">

@@ -45,6 +45,8 @@ export interface Message {
   receiverId: string;
   content: string;
   imageUrl?: string;
+  voiceUrl?: string;
+  voiceDuration?: number;
   read: boolean;
   readAt?: string;
   isDeleted?: boolean;
@@ -58,6 +60,8 @@ export interface ChatListItem {
     id: string;
     content: string;
     imageUrl?: string;
+    voiceUrl?: string;
+    voiceDuration?: number;
     isDeleted?: boolean;
     senderId: string;
     createdAt: string;

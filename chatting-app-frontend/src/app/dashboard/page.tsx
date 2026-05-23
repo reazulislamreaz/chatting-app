@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/PageHeader";
-import { Spinner } from "@/components/Spinner";
+import { DashboardSkeleton } from "@/components/skeletons";
 import { api, clearToken } from "@/lib/api";
 import { invalidateProfile } from "@/lib/invalidateCache";
 import { useProfileQuery } from "@/hooks/queries";
@@ -39,7 +39,8 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
   const {
     data: profile,
-    isLoading: fetching,
+    isPending: fetching,
+    isFetching: profileRefreshing,
     refetch: refetchProfile,
   } = useProfileQuery();
   const [name, setName] = useState("");
@@ -170,14 +171,13 @@ export default function DashboardPage() {
         <PageHeader
           title="Your Profile"
           subtitle="Update your personal information and security"
+          refreshing={profileRefreshing && !fetching}
         />
         <div className="page-content">
-          {fetching ? (
-            <div className="flex justify-center py-20">
-              <Spinner />
-            </div>
+          {fetching && !profile ? (
+            <DashboardSkeleton />
           ) : (
-            <div className="page-container mx-auto max-w-2xl space-y-4 sm:space-y-6">
+            <div className="page-container mx-auto max-w-2xl animate-fade-in space-y-4 sm:space-y-6">
               <div className="card flex flex-col items-center text-center sm:flex-row sm:text-left">
                 <Avatar
                   name={profile?.name || user?.name || "U"}

@@ -92,10 +92,14 @@ export class AuthService {
 
     const [userMessages, userPosts] = await Promise.all([
       Message.find({
-        $or: [{ senderId: userObjectId }, { receiverId: userObjectId }],
-        imageUrl: { $ne: "" },
+        $and: [
+          {
+            $or: [{ senderId: userObjectId }, { receiverId: userObjectId }],
+          },
+          { $or: [{ imageUrl: { $ne: "" } }, { voiceUrl: { $ne: "" } }] },
+        ],
       })
-        .select("imageUrl")
+        .select("imageUrl voiceUrl")
         .lean(),
       Post.find({ authorId: userObjectId, imageUrl: { $ne: "" } })
         .select("imageUrl")
@@ -104,7 +108,7 @@ export class AuthService {
 
     const s3Urls = [
       user.profilePicture,
-      ...userMessages.map((m) => m.imageUrl),
+      ...userMessages.flatMap((m) => [m.imageUrl, m.voiceUrl].filter(Boolean)),
       ...userPosts.map((p) => p.imageUrl),
     ].filter(Boolean) as string[];
 

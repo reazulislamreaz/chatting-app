@@ -4,6 +4,7 @@ import { AppError } from "../../utils/AppError";
 import { MESSAGE_LIST_SELECT } from "../../constants/queryFields";
 import {
   uploadImageToS3,
+  uploadAudioToS3,
   resolveImageUrl,
   deleteFromS3ByUrl,
 } from "../../config/s3";
@@ -18,6 +19,8 @@ function formatMessage(message: {
   receiverId: { toString(): string };
   content?: string;
   imageUrl?: string;
+  voiceUrl?: string;
+  voiceDuration?: number;
   read: boolean;
   isDeleted?: boolean;
   editedAt?: Date;
@@ -35,6 +38,12 @@ function formatMessage(message: {
       : message.imageUrl
         ? resolveImageUrl(message.imageUrl)
         : undefined,
+    voiceUrl: isDeleted
+      ? undefined
+      : message.voiceUrl
+        ? resolveImageUrl(message.voiceUrl)
+        : undefined,
+    voiceDuration: isDeleted ? undefined : message.voiceDuration || undefined,
     read: message.read,
     isDeleted,
     editedAt: message.editedAt,
@@ -61,21 +70,35 @@ export class MessageService {
     senderId: string,
     receiverId: string,
     content = "",
-    imageFile?: Express.Multer.File
+    imageFile?: Express.Multer.File,
+    voiceFile?: Express.Multer.File,
+    voiceDuration = 0
   ): Promise<MessagePayload> {
     const areFriends = await friendRequestService.areFriends(senderId, receiverId);
     if (!areFriends) {
       throw new AppError(403, "You can only message friends");
     }
 
+    if (imageFile && voiceFile) {
+      throw new AppError(400, "Send either an image or a voice message, not both");
+    }
+
     const trimmedContent = content?.trim() ?? "";
-    if (!trimmedContent && !imageFile) {
-      throw new AppError(400, "Message must have text or an image");
+    if (!trimmedContent && !imageFile && !voiceFile) {
+      throw new AppError(400, "Message must have text, an image, or a voice note");
     }
 
     let imageUrl = "";
+    let voiceUrl = "";
+    let duration = 0;
+
     if (imageFile) {
       imageUrl = await uploadImageToS3(imageFile, "messages");
+    }
+
+    if (voiceFile) {
+      voiceUrl = await uploadAudioToS3(voiceFile, "messages");
+      duration = Math.max(0, Math.round(voiceDuration));
     }
 
     const message = await Message.create({
@@ -83,6 +106,8 @@ export class MessageService {
       receiverId,
       content: trimmedContent,
       imageUrl,
+      voiceUrl,
+      voiceDuration: duration,
     });
 
     await cacheInvalidate.onNewMessage(senderId, receiverId);
@@ -98,6 +123,10 @@ export class MessageService {
     removeImage = false
   ): Promise<MessagePayload> {
     const message = await getOwnedMessage(messageId, userId);
+
+    if (message.voiceUrl) {
+      throw new AppError(400, "Voice messages cannot be edited");
+    }
 
     const trimmedContent =
       content !== undefined ? content.trim() : message.content || "";
@@ -135,9 +164,14 @@ export class MessageService {
     if (message.imageUrl) {
       await deleteFromS3ByUrl(resolveImageUrl(message.imageUrl));
     }
+    if (message.voiceUrl) {
+      await deleteFromS3ByUrl(resolveImageUrl(message.voiceUrl));
+    }
 
     message.content = "";
     message.imageUrl = "";
+    message.voiceUrl = "";
+    message.voiceDuration = 0;
     message.isDeleted = true;
     message.editedAt = undefined;
     await message.save();

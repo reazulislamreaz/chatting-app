@@ -3,6 +3,7 @@ interface PageHeaderProps {
   subtitle?: string;
   action?: React.ReactNode;
   variant?: "default" | "wa";
+  refreshing?: boolean;
 }
 
 export function PageHeader({
@@ -10,6 +11,7 @@ export function PageHeader({
   subtitle,
   action,
   variant = "default",
+  refreshing,
 }: PageHeaderProps) {
   const isWa = variant === "wa";
 
@@ -24,11 +26,17 @@ export function PageHeader({
       <div className="page-container flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1
-            className={`truncate text-lg font-bold tracking-tight sm:text-xl md:text-2xl ${
+            className={`flex items-center gap-2 truncate text-lg font-bold tracking-tight sm:text-xl md:text-2xl ${
               isWa ? "text-white" : "text-slate-900"
             }`}
           >
             {title}
+            {refreshing && (
+              <span
+                className="inline-block h-2 w-2 shrink-0 animate-pulse rounded-full bg-brand-500"
+                aria-label="Updating"
+              />
+            )}
           </h1>
           {subtitle && (
             <p

@@ -6,7 +6,8 @@ import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar } from "@/components/Avatar";
-import { Spinner } from "@/components/Spinner";
+import { MessageListSkeleton } from "@/components/skeletons";
+import { Skeleton } from "@/components/skeletons/Skeleton";
 import { ChatComposer } from "@/components/ChatComposer";
 import { MessageBubble } from "@/components/MessageBubble";
 import { EditMessageModal } from "@/components/EditMessageModal";
@@ -26,10 +27,11 @@ export default function ChatPage() {
   const { refreshChatList, typingUsers } = useChat();
   const queryClient = useQueryClient();
 
-  const { data: otherUser } = useUserQuery(otherUserId);
+  const { data: otherUser, isPending: userPending } = useUserQuery(otherUserId);
   const {
     data: initialMessages,
-    isLoading: messagesLoading,
+    isPending: messagesPending,
+    isFetching: messagesFetching,
     isSuccess: messagesReady,
   } = useMessagesQuery(otherUserId);
 
@@ -40,7 +42,8 @@ export default function ChatPage() {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const markedReadRef = useRef(false);
 
-  const loading = messagesLoading && messages.length === 0;
+  const showMessagesSkeleton = messagesPending && messages.length === 0;
+  const headerLoading = userPending && !otherUser;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -204,6 +207,35 @@ export default function ChatPage() {
     }
   };
 
+  const handleSendVoice = async (
+    file: File,
+    durationSeconds: number,
+    caption: string,
+  ) => {
+    setSending(true);
+    emitTyping(false);
+    try {
+      const formData = new FormData();
+      formData.append("receiverId", otherUserId);
+      formData.append("content", caption);
+      formData.append("voice", file);
+      formData.append("voiceDuration", String(durationSeconds));
+
+      const res = await api<ApiResponse<Message>>("/messages", {
+        method: "POST",
+        body: formData,
+      });
+      appendMessage(res.data);
+      refreshChatList();
+    } catch (err) {
+      toastError(
+        err instanceof Error ? err.message : "Failed to send voice message",
+      );
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleDeleteMessage = async (messageId: string) => {
     if (!confirm("Delete this message?")) return;
     try {
@@ -285,29 +317,35 @@ export default function ChatPage() {
                 </p>
               </div>
             </>
-          ) : loading ? (
-            <div className="h-10 w-32 animate-pulse rounded-xl bg-white/60" />
+          ) : headerLoading ? (
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-full bg-white/40" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-28 bg-white/40" />
+                <Skeleton className="h-3 w-16 bg-white/30" />
+              </div>
+            </div>
           ) : null}
         </header>
 
         <div className="wa-chat-bg flex-1 overflow-y-auto px-3 py-3 scrollbar-thin sm:px-4">
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <Spinner />
-            </div>
+          {showMessagesSkeleton ? (
+            <MessageListSkeleton count={8} />
           ) : messages.length === 0 ? (
             <p className="py-16 text-center text-sm text-slate-500">
               No messages yet. Say hello!
             </p>
           ) : (
-            <div className="page-container mx-auto flex max-w-2xl flex-col gap-1.5">
+            <div className="page-container mx-auto flex max-w-2xl animate-fade-in flex-col gap-1.5">
               {messages.map((msg) => (
                 <MessageBubble
                   key={msg.id}
                   message={msg}
                   isOwn={msg.senderId === user?.id}
                   onEdit={
-                    msg.senderId === user?.id && !msg.isDeleted
+                    msg.senderId === user?.id &&
+                    !msg.isDeleted &&
+                    !msg.voiceUrl
                       ? setEditingMessage
                       : undefined
                   }
@@ -326,8 +364,9 @@ export default function ChatPage() {
         <ChatComposer
           onSendText={handleSendText}
           onSendImage={handleSendImage}
+          onSendVoice={handleSendVoice}
           onInputChange={handleInputChange}
-          sending={sending}
+          sending={sending || (messagesFetching && showMessagesSkeleton)}
         />
 
         {editingMessage && (

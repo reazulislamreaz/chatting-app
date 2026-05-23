@@ -5,6 +5,8 @@ export interface IMessage extends Document {
   receiverId: mongoose.Types.ObjectId;
   content: string;
   imageUrl: string;
+  voiceUrl: string;
+  voiceDuration: number;
   read: boolean;
   readAt?: Date;
   isDeleted: boolean;
@@ -19,6 +21,8 @@ const messageSchema = new Schema<IMessage>(
     receiverId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     content: { type: String, default: "", trim: true, maxlength: 5000 },
     imageUrl: { type: String, default: "" },
+    voiceUrl: { type: String, default: "" },
+    voiceDuration: { type: Number, default: 0, min: 0 },
     read: { type: Boolean, default: false },
     readAt: { type: Date },
     isDeleted: { type: Boolean, default: false },

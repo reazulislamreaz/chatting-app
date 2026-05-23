@@ -6,6 +6,8 @@ export interface MessagePayload {
   receiverId: string;
   content: string;
   imageUrl?: string;
+  voiceUrl?: string;
+  voiceDuration?: number;
   read: boolean;
   isDeleted?: boolean;
   editedAt?: Date;

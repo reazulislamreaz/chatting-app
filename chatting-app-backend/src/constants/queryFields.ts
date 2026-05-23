@@ -7,5 +7,6 @@ export const USER_LIST_SELECT =
 export const USER_EXISTS_SELECT = "_id";
 export const FRIEND_REQUEST_SELECT = "senderId receiverId status createdAt";
 export const MESSAGE_LIST_SELECT =
-  "senderId receiverId content imageUrl read readAt isDeleted editedAt createdAt";
-export const MESSAGE_PREVIEW_SELECT = "content imageUrl senderId createdAt read";
+  "senderId receiverId content imageUrl voiceUrl voiceDuration read readAt isDeleted editedAt createdAt";
+export const MESSAGE_PREVIEW_SELECT =
+  "content imageUrl voiceUrl voiceDuration senderId createdAt read";

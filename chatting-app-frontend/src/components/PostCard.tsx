@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { Avatar } from "./Avatar";
-import { Spinner } from "./Spinner";
+import { CommentListSkeleton } from "@/components/skeletons";
 import { EditPostModal } from "./EditPostModal";
 import { api } from "@/lib/api";
 import { toastError, toastSuccess } from "@/lib/toast";
@@ -277,9 +277,7 @@ export function PostCard({ post, onUpdate, onRemove, currentUserId }: PostCardPr
       {showComments && (
         <div className="border-t border-surface-border bg-slate-50/80 p-4">
           {loadingComments ? (
-            <div className="flex justify-center py-4">
-              <Spinner className="h-6 w-6" />
-            </div>
+            <CommentListSkeleton count={3} />
           ) : (
             <div className="mb-3 max-h-60 space-y-3 overflow-y-auto scrollbar-thin">
               {comments.length === 0 ? (

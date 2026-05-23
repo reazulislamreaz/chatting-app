@@ -5,8 +5,8 @@ import { AppLayout } from "@/components/AppLayout";
 import { CreatePost } from "@/components/CreatePost";
 import { PostCard } from "@/components/PostCard";
 import { PageHeader } from "@/components/PageHeader";
-import { Spinner } from "@/components/Spinner";
 import { EmptyState } from "@/components/EmptyState";
+import { FeedSkeleton, PostCardSkeleton } from "@/components/skeletons";
 import { queryKeys } from "@/lib/queryKeys";
 import { useFeedInfiniteQuery } from "@/hooks/queries";
 import { useAuth } from "@/context/AuthContext";
@@ -17,7 +17,8 @@ export default function FeedPage() {
   const queryClient = useQueryClient();
   const {
     data,
-    isLoading,
+    isPending,
+    isFetching,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -101,15 +102,14 @@ export default function FeedPage() {
         <PageHeader
           title="News Feed"
           subtitle="Share updates and see what everyone is posting"
+          refreshing={isFetching && !isPending}
         />
         <div className="page-content">
           <div className="page-container mx-auto max-w-2xl space-y-4 sm:space-y-6">
             <CreatePost onPostCreated={handlePostCreated} />
 
-            {isLoading ? (
-              <div className="flex justify-center py-16">
-                <Spinner />
-              </div>
+            {isPending ? (
+              <FeedSkeleton count={3} />
             ) : posts.length === 0 ? (
               <EmptyState
                 title="No posts yet"
@@ -122,7 +122,7 @@ export default function FeedPage() {
               />
             ) : (
               <>
-                <div className="space-y-4">
+                <div className="animate-fade-in space-y-4">
                   {posts.map((post) => (
                     <PostCard
                       key={post.id}
@@ -134,14 +134,17 @@ export default function FeedPage() {
                   ))}
                 </div>
                 {hasNextPage && (
-                  <div className="flex justify-center pb-4">
-                    <button
-                      onClick={() => fetchNextPage()}
-                      disabled={isFetchingNextPage}
-                      className="btn-secondary"
-                    >
-                      {isFetchingNextPage ? "Loading..." : "Load more posts"}
-                    </button>
+                  <div className="space-y-4 pb-4">
+                    {isFetchingNextPage && <PostCardSkeleton />}
+                    <div className="flex justify-center">
+                      <button
+                        onClick={() => fetchNextPage()}
+                        disabled={isFetchingNextPage}
+                        className="btn-secondary"
+                      >
+                        {isFetchingNextPage ? "Loading more…" : "Load more posts"}
+                      </button>
+                    </div>
                   </div>
                 )}
               </>

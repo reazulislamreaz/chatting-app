@@ -81,6 +81,51 @@ export function resolveImageUrl(stored?: string): string {
   return getPublicUrl(stored);
 }
 
+export async function uploadAudioToS3(
+  file: Express.Multer.File,
+  folder: "messages"
+): Promise<string> {
+  if (!file?.buffer?.length) {
+    throw new AppError(400, "No audio file provided");
+  }
+
+  const bucketRegion = await resolveBucketRegion();
+  const ext = path.extname(file.originalname).toLowerCase() || ".webm";
+  const key = `${folder}/${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+  const contentType = file.mimetype || "audio/webm";
+
+  try {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: env.AWS_BUCKET_NAME,
+        Key: key,
+        Body: file.buffer,
+        ContentType: contentType,
+        ContentLength: file.buffer.length,
+      })
+    );
+
+    return getPublicUrl(key, bucketRegion);
+  } catch (err: unknown) {
+    const awsErr = err as {
+      name?: string;
+      Code?: string;
+      message?: string;
+      Endpoint?: string;
+    };
+    console.error("S3 audio upload failed:", awsErr.name || awsErr.Code, awsErr.message);
+
+    const isAccessDenied =
+      awsErr.Code === "AccessDenied" || awsErr.name === "AccessDenied";
+
+    const message = isAccessDenied
+      ? await getAccessDeniedHint()
+      : awsErr.message || "Failed to upload audio to S3";
+
+    throw new AppError(500, message);
+  }
+}
+
 export async function uploadImageToS3(
   file: Express.Multer.File,
   folder: "avatars" | "posts" | "messages"

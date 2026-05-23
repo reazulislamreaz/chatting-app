@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { PrefetchLink } from "@/components/PrefetchLink";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
-import { Spinner } from "@/components/Spinner";
+import { FriendRowSkeleton } from "@/components/skeletons";
 import { api } from "@/lib/api";
 import { invalidateFriends } from "@/lib/invalidateCache";
 import {
@@ -30,10 +31,22 @@ export default function FriendsPage() {
   const friends = friendsQuery.data ?? [];
   const received = receivedQuery.data ?? [];
   const sent = sentQuery.data ?? [];
+  const hasAnyData =
+    (friendsQuery.data?.length ?? 0) > 0 ||
+    (receivedQuery.data?.length ?? 0) > 0 ||
+    (sentQuery.data?.length ?? 0) > 0;
+
   const loading =
-    friendsQuery.isLoading ||
-    receivedQuery.isLoading ||
-    sentQuery.isLoading;
+    !hasAnyData &&
+    (friendsQuery.isPending ||
+      receivedQuery.isPending ||
+      sentQuery.isPending);
+
+  const refreshing =
+    !loading &&
+    (friendsQuery.isFetching ||
+      receivedQuery.isFetching ||
+      sentQuery.isFetching);
 
   const respond = async (id: string, action: "accept" | "reject") => {
     try {
@@ -62,6 +75,7 @@ export default function FriendsPage() {
         <PageHeader
           title="Friends"
           subtitle="Manage your connections and requests"
+          refreshing={refreshing}
           action={
             <div className="flex flex-wrap gap-2">
               {tabs.map((t) => (
@@ -89,9 +103,7 @@ export default function FriendsPage() {
         <div className="page-content">
           <div className="page-container">
             {loading ? (
-              <div className="flex justify-center py-20">
-                <Spinner />
-              </div>
+              <FriendRowSkeleton count={4} />
             ) : tab === "friends" ? (
               friends.length === 0 ? (
                 <EmptyState
@@ -99,7 +111,7 @@ export default function FriendsPage() {
                   description="Discover people and send friend requests to connect"
                 />
               ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid animate-fade-in gap-3 sm:grid-cols-2">
                   {friends.map((friend) => (
                     <Link
                       key={friend.id}
@@ -119,13 +131,15 @@ export default function FriendsPage() {
                           {friend.email}
                         </p>
                       </div>
-                      <Link
+                      <PrefetchLink
                         href={`/chat/${friend.id}`}
+                        prefetchUserId={friend.id}
+                        prefetchChat
                         onClick={(e) => e.stopPropagation()}
                         className="btn-primary shrink-0 !px-4 !py-2 text-sm"
                       >
                         Message
-                      </Link>
+                      </PrefetchLink>
                     </Link>
                   ))}
                 </div>

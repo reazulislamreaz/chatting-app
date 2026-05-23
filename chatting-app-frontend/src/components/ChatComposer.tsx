@@ -1,24 +1,50 @@
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { toastError } from "@/lib/toast";
 
 interface ChatComposerProps {
   onSendText: (content: string) => void;
   onSendImage: (file: File, caption: string) => Promise<void>;
+  onSendVoice: (file: File, durationSeconds: number, caption: string) => Promise<void>;
   onInputChange?: (value: string) => void;
   sending?: boolean;
+}
+
+function pickRecorderMimeType(): string {
+  const types = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/mp4",
+  ];
+  return types.find((t) => MediaRecorder.isTypeSupported(t)) || "";
+}
+
+function formatRecordingTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 export function ChatComposer({
   onSendText,
   onSendImage,
+  onSendVoice,
   onInputChange,
   sending,
 }: ChatComposerProps) {
   const [content, setContent] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const recordingStartedAtRef = useRef<number>(0);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const clearImage = () => {
     setImage(null);
@@ -27,6 +53,28 @@ export function ChatComposer({
     if (fileRef.current) fileRef.current.value = "";
   };
 
+  const stopMediaStream = () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+  };
+
+  const stopRecordingTimer = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopRecordingTimer();
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+      stopMediaStream();
+    };
+  }, []);
+
   const handleImagePick = (file: File | null) => {
     clearImage();
     if (!file) return;
@@ -34,11 +82,105 @@ export function ChatComposer({
     setPreview(URL.createObjectURL(file));
   };
 
-  const canSend = !sending && (content.trim().length > 0 || !!image);
+  const cancelRecording = () => {
+    stopRecordingTimer();
+    chunksRef.current = [];
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.onstop = null;
+      mediaRecorderRef.current.stop();
+    }
+    mediaRecorderRef.current = null;
+    stopMediaStream();
+    setRecording(false);
+    setRecordingSeconds(0);
+  };
+
+  const startRecording = async () => {
+    if (recording || sending || image) return;
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
+
+      const mimeType = pickRecorderMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
+      mediaRecorderRef.current = recorder;
+      recordingStartedAtRef.current = Date.now();
+      setRecordingSeconds(0);
+      setRecording(true);
+
+      recordingTimerRef.current = setInterval(() => {
+        const elapsed = Math.floor(
+          (Date.now() - recordingStartedAtRef.current) / 1000,
+        );
+        setRecordingSeconds(elapsed);
+      }, 200);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+
+      recorder.onstop = async () => {
+        stopRecordingTimer();
+        stopMediaStream();
+
+        const duration = Math.max(
+          1,
+          Math.round((Date.now() - recordingStartedAtRef.current) / 1000),
+        );
+        const blob = new Blob(chunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        });
+        chunksRef.current = [];
+
+        if (blob.size < 100) {
+          setRecording(false);
+          setRecordingSeconds(0);
+          return;
+        }
+
+        const ext = recorder.mimeType.includes("mp4") ? "m4a" : "webm";
+        const file = new File([blob], `voice-${Date.now()}.${ext}`, {
+          type: recorder.mimeType || "audio/webm",
+        });
+        const caption = content.trim();
+
+        setContent("");
+        setRecording(false);
+        setRecordingSeconds(0);
+        await onSendVoice(file, duration, caption);
+      };
+
+      recorder.start();
+    } catch {
+      stopMediaStream();
+      setRecording(false);
+      setRecordingSeconds(0);
+      toastError(
+        "Microphone access is required to record voice messages. Allow mic permission in your browser.",
+      );
+    }
+  };
+
+  const finishRecording = () => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  const canSendText = !sending && !recording && !image && content.trim().length > 0;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!canSend) return;
+    if (!canSendText && !image) return;
 
     if (image) {
       const caption = content.trim();
@@ -82,11 +224,44 @@ export function ChatComposer({
         </div>
       )}
 
+      {recording && (
+        <div className="page-container mb-2 flex items-center justify-between rounded-xl bg-rose-50 px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-3 w-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-rose-500" />
+            </span>
+            <div>
+              <p className="text-sm font-medium text-rose-700">Recording voice…</p>
+              <p className="text-xs text-rose-500">
+                {formatRecordingTime(recordingSeconds)}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={cancelRecording}
+              className="rounded-full px-3 py-1.5 text-sm text-slate-600 hover:bg-white"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={finishRecording}
+              className="rounded-full bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="page-container flex items-end gap-2">
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          disabled={sending}
+          disabled={sending || recording}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-600 transition hover:bg-white/80 disabled:opacity-50 sm:h-11 sm:w-11"
           aria-label="Attach image"
         >
@@ -106,6 +281,26 @@ export function ChatComposer({
           onChange={(e) => handleImagePick(e.target.files?.[0] || null)}
         />
 
+        <button
+          type="button"
+          onClick={recording ? finishRecording : startRecording}
+          disabled={sending || !!image}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:opacity-50 sm:h-11 sm:w-11 ${
+            recording
+              ? "bg-rose-500 text-white hover:bg-rose-600"
+              : "text-slate-600 hover:bg-white/80"
+          }`}
+          aria-label={recording ? "Stop and send voice message" : "Record voice message"}
+        >
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
+            />
+          </svg>
+        </button>
+
         <input
           type="text"
           value={content}
@@ -113,13 +308,20 @@ export function ChatComposer({
             setContent(e.target.value);
             onInputChange?.(e.target.value);
           }}
-          placeholder={image ? "Add a caption (optional)" : "Message"}
-          className="min-h-[40px] flex-1 rounded-3xl border-0 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-brand-500/30 sm:min-h-[44px]"
+          placeholder={
+            recording
+              ? "Optional caption for voice note"
+              : image
+                ? "Add a caption (optional)"
+                : "Message"
+          }
+          disabled={sending}
+          className="min-h-[40px] flex-1 rounded-3xl border-0 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-brand-500/30 disabled:opacity-60 sm:min-h-[44px]"
         />
 
         <button
           type="submit"
-          disabled={!canSend}
+          disabled={!canSendText && !image}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white shadow-sm transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-slate-300 sm:h-11 sm:w-11"
           aria-label="Send"
         >

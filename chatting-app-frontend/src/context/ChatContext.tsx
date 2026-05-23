@@ -19,6 +19,7 @@ import type { ChatListItem, Message } from "@/types";
 interface ChatContextType {
   chatList: ChatListItem[];
   loading: boolean;
+  isFetching: boolean;
   refreshChatList: () => Promise<void>;
   typingUsers: Record<string, boolean>;
 }
@@ -28,7 +29,12 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { data: chatList = [], isLoading, refetch } = useChatsQuery(!!user);
+  const {
+    data: chatList = [],
+    isPending,
+    isFetching,
+    refetch,
+  } = useChatsQuery(!!user);
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
 
   const refreshChatList = useCallback(async () => {
@@ -63,6 +69,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 id: message.id,
                 content: message.content,
                 imageUrl: message.imageUrl,
+                voiceUrl: message.voiceUrl,
+                voiceDuration: message.voiceDuration,
                 isDeleted: message.isDeleted,
                 senderId: message.senderId,
                 createdAt: message.createdAt,
@@ -109,7 +117,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     <ChatContext.Provider
       value={{
         chatList,
-        loading: isLoading,
+        loading: isPending,
+        isFetching,
         refreshChatList,
         typingUsers,
       }}

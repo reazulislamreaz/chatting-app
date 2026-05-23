@@ -25,7 +25,7 @@ export function useChatsQuery(enabled: boolean) {
       return res.data;
     },
     enabled,
-    staleTime: 30 * 1000,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -42,6 +42,7 @@ export function useUsersQuery(search: string) {
       return res.data.users;
     },
     staleTime: 2 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -53,7 +54,7 @@ export function useUserQuery(userId: string, enabled = true) {
       return res.data;
     },
     enabled: enabled && !!userId,
-    staleTime: 3 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -65,7 +66,7 @@ export function useProfileQuery(enabled = true) {
       return res.data;
     },
     enabled,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 3 * 60 * 1000,
   });
 }
 
@@ -83,7 +84,7 @@ export function useFeedInfiniteQuery() {
       last.pagination.page < last.pagination.totalPages
         ? last.pagination.page + 1
         : undefined,
-    staleTime: 60 * 1000,
+    staleTime: 90 * 1000,
   });
 }
 
@@ -94,7 +95,7 @@ export function useFriendsQuery() {
       const res = await api<ApiResponse<User[]>>("/friend-requests/friends");
       return res.data;
     },
-    staleTime: 60 * 1000,
+    staleTime: 90 * 1000,
   });
 }
 
@@ -107,7 +108,7 @@ export function useFriendReceivedQuery() {
       );
       return res.data;
     },
-    staleTime: 30 * 1000,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -120,7 +121,7 @@ export function useFriendSentQuery() {
       );
       return res.data;
     },
-    staleTime: 30 * 1000,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -134,6 +135,7 @@ export function useMessagesQuery(otherUserId: string, enabled = true) {
       return res.data.messages;
     },
     enabled: enabled && !!otherUserId,
-    staleTime: 30 * 1000,
+    staleTime: 60 * 1000,
+    placeholderData: (previousData) => previousData,
   });
 }

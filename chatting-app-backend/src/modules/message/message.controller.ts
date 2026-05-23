@@ -11,12 +11,17 @@ import {
 
 export class MessageController {
   sendMessage = asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { receiverId, content } = req.body;
+    const { receiverId, content, voiceDuration } = req.body;
+    const files = req.files as
+      | { image?: Express.Multer.File[]; voice?: Express.Multer.File[] }
+      | undefined;
     const message = await messageService.sendMessage(
       req.user!.userId,
       receiverId,
       content,
-      req.file
+      files?.image?.[0],
+      files?.voice?.[0],
+      voiceDuration
     );
     emitReceiveMessage(message);
     res.status(201).json({ success: true, data: message });

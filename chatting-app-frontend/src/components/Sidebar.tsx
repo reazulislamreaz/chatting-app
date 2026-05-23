@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
+import { prefetchChats } from "@/lib/prefetch";
 import { Avatar } from "./Avatar";
 
 const navItems = [
@@ -59,17 +61,25 @@ function NavLink({
   icon,
   isActive,
   compact,
+  onWarm,
 }: {
   href: string;
   label: string;
   icon: React.ReactNode;
   isActive: boolean;
   compact?: boolean;
+  onWarm?: () => void;
 }) {
+  const warmProps = {
+    onMouseEnter: onWarm,
+    onFocus: onWarm,
+  };
+
   if (compact) {
     return (
       <Link
         href={href}
+        {...warmProps}
         className={`flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium transition-all xs:gap-1 xs:px-2 xs:py-2 ${
           isActive ? "text-brand-600" : "text-slate-500"
         }`}
@@ -89,6 +99,7 @@ function NavLink({
   return (
     <Link
       href={href}
+      {...warmProps}
       className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
         isActive
           ? "bg-brand-50 text-brand-800 shadow-sm"
@@ -104,7 +115,12 @@ function NavLink({
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const queryClient = useQueryClient();
   const isChatDetail = pathname.startsWith("/chat/") && pathname !== "/chat";
+
+  const warmRoute = (href: string) => {
+    if (href === "/chat") prefetchChats(queryClient);
+  };
 
   return (
     <>
@@ -132,7 +148,14 @@ export function Sidebar() {
           {navItems.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
-            return <NavLink key={item.href} {...item} isActive={isActive} />;
+            return (
+              <NavLink
+                key={item.href}
+                {...item}
+                isActive={isActive}
+                onWarm={() => warmRoute(item.href)}
+              />
+            );
           })}
         </nav>
 
@@ -157,7 +180,13 @@ export function Sidebar() {
               const isActive =
                 pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
-                <NavLink key={item.href} {...item} isActive={isActive} compact />
+                <NavLink
+                  key={item.href}
+                  {...item}
+                  isActive={isActive}
+                  compact
+                  onWarm={() => warmRoute(item.href)}
+                />
               );
             })}
           </div>

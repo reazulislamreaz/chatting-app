@@ -3,6 +3,7 @@ import { z } from "zod";
 export const sendMessageSchema = z.object({
   receiverId: z.string().regex(/^[a-f\d]{24}$/i, "Invalid user ID"),
   content: z.string().max(5000).trim().optional().default(""),
+  voiceDuration: z.coerce.number().min(0).max(600).optional().default(0),
 });
 
 export const updateMessageSchema = z.object({
