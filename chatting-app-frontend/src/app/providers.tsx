@@ -8,6 +8,7 @@ import { ChatProvider } from "@/context/ChatContext";
 import { CallProvider } from "@/context/CallContext";
 import { IncomingCallModal } from "@/components/IncomingCallModal";
 import { ActiveCallBar } from "@/components/ActiveCallBar";
+import { MessageSoundUnlock } from "@/components/MessageSoundUnlock";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -17,6 +18,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <CallProvider>
       <ChatProvider>
         {children}
+        <MessageSoundUnlock />
         <IncomingCallModal />
         <ActiveCallBar />
         <Toaster

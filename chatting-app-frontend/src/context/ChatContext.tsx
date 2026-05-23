@@ -9,6 +9,7 @@ import {
   useState,
   ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { getSocket } from "@/lib/socket";
 import { queryKeys } from "@/lib/queryKeys";
@@ -18,6 +19,10 @@ import {
   type UserPresencePayload,
 } from "@/lib/presenceCache";
 import { useChatsQuery } from "@/hooks/queries";
+import {
+  playIncomingMessageSound,
+  shouldPlayIncomingSound,
+} from "@/lib/messageSound";
 import { useAuth } from "./AuthContext";
 import type { ChatListItem, Message } from "@/types";
 
@@ -33,6 +38,7 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
   const {
     data: chatList = [],
@@ -55,6 +61,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const socket = getSocket();
 
     const onReceiveMessage = (message: Message) => {
+      if (shouldPlayIncomingSound(message, user.id, pathname)) {
+        playIncomingMessageSound();
+      }
+
       queryClient.setQueryData<ChatListItem[]>(queryKeys.chats, (prev) => {
         if (!prev) return prev;
 
@@ -157,7 +167,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       Object.values(typingClearTimers.current).forEach(clearTimeout);
       typingClearTimers.current = {};
     };
-  }, [user, queryClient]);
+  }, [user, queryClient, pathname]);
 
   return (
     <ChatContext.Provider

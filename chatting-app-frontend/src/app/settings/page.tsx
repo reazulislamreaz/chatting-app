@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
+import { MessageSoundSettings } from "@/components/MessageSoundSettings";
 import { api, clearToken } from "@/lib/api";
 import { getQueryClient } from "@/lib/queryClient";
 import { disconnectSocket } from "@/lib/socket";
@@ -99,6 +100,8 @@ export default function SettingsPage() {
         />
         <div className="page-content">
           <div className="content-narrow animate-fade-in space-y-4 sm:space-y-6">
+            <MessageSoundSettings />
+
             <form onSubmit={handlePasswordSubmit} className="card space-y-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
