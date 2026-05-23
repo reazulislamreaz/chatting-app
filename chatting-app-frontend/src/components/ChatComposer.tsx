@@ -196,7 +196,10 @@ export function ChatComposer({
     }
   };
 
-  const canSendText = !sending && !recording && !image && content.trim().length > 0;
+  const canSendText =
+    !sending && !recording && !image && content.trim().length > 0;
+  const canSend = canSendText || (!!image && !sending && !recording);
+  const showMicButton = !canSend && !sending && !recording;
 
   const recordingProgress =
     (recordingSeconds / MAX_VOICE_DURATION_SECONDS) * 100;
@@ -204,7 +207,7 @@ export function ChatComposer({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!canSendText && !image) return;
+    if (!canSend) return;
 
     if (image) {
       const caption = content.trim();
@@ -222,10 +225,10 @@ export function ChatComposer({
   return (
     <form
       onSubmit={handleSubmit}
-      className="safe-bottom shrink-0 border-t border-surface-border bg-wa-panel px-3 py-2 sm:px-4"
+      className="safe-bottom z-20 shrink-0 border-t border-surface-border bg-wa-panel px-2 py-2 sm:px-4"
     >
       {preview && (
-        <div className="page-container mb-2 flex items-start gap-2 rounded-xl bg-white p-2 shadow-sm">
+        <div className="mx-auto mb-2 flex w-full max-w-2xl items-start gap-2 rounded-xl bg-white p-2 shadow-sm sm:max-w-3xl lg:max-w-4xl">
           <img
             src={preview}
             alt="Preview"
@@ -249,7 +252,7 @@ export function ChatComposer({
       )}
 
       {recording && (
-        <div className="page-container mb-2 flex items-center justify-between rounded-xl bg-rose-50 px-4 py-3 shadow-sm">
+        <div className="mx-auto mb-2 flex w-full max-w-2xl items-center justify-between rounded-xl bg-rose-50 px-4 py-3 shadow-sm sm:max-w-3xl lg:max-w-4xl">
           <div className="flex items-center gap-3">
             <span className="relative flex h-3 w-3">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
@@ -296,15 +299,21 @@ export function ChatComposer({
         </div>
       )}
 
-      <div className="page-container flex items-end gap-2">
+      <div className="mx-auto flex w-full max-w-2xl items-end gap-1.5 sm:max-w-3xl sm:gap-2 lg:max-w-4xl">
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={sending || recording}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-600 transition hover:bg-white/80 disabled:opacity-50 sm:h-11 sm:w-11"
+          className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 transition hover:bg-white/80 disabled:opacity-50 sm:mb-0 sm:h-10 sm:w-10"
           aria-label="Attach image"
         >
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <svg
+            className="h-5 w-5 sm:h-6 sm:w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -320,62 +329,71 @@ export function ChatComposer({
           onChange={(e) => handleImagePick(e.target.files?.[0] || null)}
         />
 
-        <button
-          type="button"
-          onClick={recording ? finishRecording : startRecording}
-          disabled={sending || !!image}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:opacity-50 sm:h-11 sm:w-11 ${
-            recording
-              ? "bg-rose-500 text-white hover:bg-rose-600"
-              : "text-slate-600 hover:bg-white/80"
-          }`}
-          aria-label={
-            recording
-              ? "Stop and send voice message"
-              : "Record voice message (max 1 minute)"
-          }
-        >
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
-            />
-          </svg>
-        </button>
+        <div className="relative min-w-0 flex-1">
+          <input
+            type="text"
+            value={content}
+            onChange={(e) => {
+              setContent(e.target.value);
+              onInputChange?.(e.target.value);
+            }}
+            placeholder={
+              recording
+                ? "Optional caption for voice note"
+                : image
+                  ? "Add a caption (optional)"
+                  : "Message"
+            }
+            disabled={sending}
+            className="min-h-[42px] w-full rounded-3xl border-0 bg-white py-2.5 pl-4 pr-12 text-base text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-brand-500/30 disabled:opacity-60 sm:min-h-[44px] sm:pr-14 sm:text-sm"
+          />
 
-        <input
-          type="text"
-          value={content}
-          onChange={(e) => {
-            setContent(e.target.value);
-            onInputChange?.(e.target.value);
-          }}
-          placeholder={
-            recording
-              ? "Optional caption for voice note"
-              : image
-                ? "Add a caption (optional)"
-                : "Message"
-          }
-          disabled={sending}
-          className="min-h-[40px] flex-1 rounded-3xl border-0 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-brand-500/30 disabled:opacity-60 sm:min-h-[44px]"
-        />
-
-        <button
-          type="submit"
-          disabled={!canSendText && !image}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white shadow-sm transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-slate-300 sm:h-11 sm:w-11"
-          aria-label="Send"
-        >
-          {sending ? (
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-          ) : (
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3.4 20.4 20.85 12.28c.8-.4.8-1.5 0-1.9L3.4 2.6c-.77-.38-1.66.22-1.5 1.08l1.25 6.3c.1.5.5.88 1 .94l7.9.95-7.9.95c-.5.06-.9.44-1 .94l-1.25 6.3c-.16.86.73 1.46 1.5 1.08z" />
-            </svg>
+          {canSend && (
+            <button
+              type="submit"
+              disabled={!canSend}
+              className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-white shadow-sm transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-slate-300 sm:bottom-1.5 sm:right-1.5 sm:h-10 sm:w-10"
+              aria-label="Send message"
+            >
+              {sending ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent sm:h-5 sm:w-5" />
+              ) : (
+                <svg
+                  className="h-5 w-5"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden
+                >
+                  <path d="M3.4 20.4 20.85 12.28c.8-.4.8-1.5 0-1.9L3.4 2.6c-.77-.38-1.66.22-1.5 1.08l1.25 6.3c.1.5.5.88 1 .94l7.9.95-7.9.95c-.5.06-.9.44-1 .94l-1.25 6.3c-.16.86.73 1.46 1.5 1.08z" />
+                </svg>
+              )}
+            </button>
           )}
-        </button>
+
+          {showMicButton && (
+            <button
+              type="button"
+              onClick={startRecording}
+              className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 sm:bottom-1.5 sm:right-1.5 sm:h-10 sm:w-10"
+              aria-label="Record voice message (max 1 minute)"
+            >
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
     </form>
   );
