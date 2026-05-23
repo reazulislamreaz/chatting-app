@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar } from "@/components/Avatar";
 import { Spinner } from "@/components/Spinner";
@@ -10,10 +11,12 @@ import { ChatComposer } from "@/components/ChatComposer";
 import { MessageBubble } from "@/components/MessageBubble";
 import { EditMessageModal } from "@/components/EditMessageModal";
 import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
+import { useMessagesQuery, useUserQuery } from "@/hooks/queries";
 import { getSocket } from "@/lib/socket";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
-import type { User, Message, ApiResponse } from "@/types";
+import type { Message, ApiResponse } from "@/types";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 export default function ChatPage() {
@@ -21,59 +24,81 @@ export default function ChatPage() {
   const otherUserId = params.userId as string;
   const { user } = useAuth();
   const { refreshChatList, typingUsers } = useChat();
+  const queryClient = useQueryClient();
 
-  const [otherUser, setOtherUser] = useState<User | null>(null);
+  const { data: otherUser } = useUserQuery(otherUserId);
+  const {
+    data: initialMessages,
+    isLoading: messagesLoading,
+    isSuccess: messagesReady,
+  } = useMessagesQuery(otherUserId);
+
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const markedReadRef = useRef(false);
+
+  const loading = messagesLoading && messages.length === 0;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const appendMessage = useCallback((message: Message) => {
-    setMessages((prev) => {
-      if (prev.some((m) => m.id === message.id)) return prev;
-      return [...prev, message];
-    });
-  }, []);
-
-  const replaceMessage = useCallback((message: Message) => {
-    setMessages((prev) =>
-      prev.map((m) => (m.id === message.id ? message : m))
-    );
-  }, []);
-
-  const fetchMessages = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [userRes, messagesRes] = await Promise.all([
-        api<ApiResponse<User>>(`/users/${otherUserId}`),
-        api<ApiResponse<{ messages: Message[] }>>(
-          `/messages/${otherUserId}?limit=100`
-        ),
-      ]);
-      setOtherUser(userRes.data);
-      setMessages(messagesRes.data.messages);
-
-      const socket = getSocket();
-      socket.emit("message_read", { senderId: otherUserId });
-      await api("/messages/read", {
-        method: "PATCH",
-        body: JSON.stringify({ senderId: otherUserId }),
+  const syncMessagesCache = useCallback(
+    (updater: (prev: Message[]) => Message[]) => {
+      setMessages((prev) => {
+        const next = updater(prev);
+        queryClient.setQueryData(queryKeys.messages(otherUserId), next);
+        return next;
       });
-      refreshChatList();
-    } finally {
-      setLoading(false);
-    }
-  }, [otherUserId, refreshChatList]);
+    },
+    [queryClient, otherUserId],
+  );
+
+  const appendMessage = useCallback(
+    (message: Message) => {
+      syncMessagesCache((prev) => {
+        if (prev.some((m) => m.id === message.id)) return prev;
+        return [...prev, message];
+      });
+    },
+    [syncMessagesCache],
+  );
+
+  const replaceMessage = useCallback(
+    (message: Message) => {
+      syncMessagesCache((prev) =>
+        prev.map((m) => (m.id === message.id ? message : m)),
+      );
+    },
+    [syncMessagesCache],
+  );
 
   useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
+    markedReadRef.current = false;
+  }, [otherUserId]);
+
+  useEffect(() => {
+    if (initialMessages) {
+      setMessages(initialMessages);
+    }
+  }, [initialMessages]);
+
+  useEffect(() => {
+    if (!messagesReady || !user || markedReadRef.current) return;
+    markedReadRef.current = true;
+
+    const socket = getSocket();
+    socket.emit("message_read", { senderId: otherUserId });
+    api("/messages/read", {
+      method: "PATCH",
+      body: JSON.stringify({ senderId: otherUserId }),
+    })
+      .then(() => refreshChatList())
+      .catch(() => {});
+  }, [messagesReady, user, otherUserId, refreshChatList]);
 
   useEffect(() => {
     scrollToBottom();

@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { api, setToken, clearToken, getToken } from "@/lib/api";
+import { getQueryClient } from "@/lib/queryClient";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
 import type { User, AuthResponse, ApiResponse } from "@/types";
 
@@ -83,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearToken();
     setUser(null);
     disconnectSocket();
+    getQueryClient().clear();
     router.push("/login");
   };
 

@@ -3,6 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { env } from "./config/env";
+import { cache } from "./cache/cache.service";
+import { isRedisEnabled } from "./config/redis";
 import { corsOriginValidator } from "./config/cors";
 import { errorHandler } from "./middleware/errorHandler";
 import { notFoundHandler } from "./middleware/notFoundHandler";
@@ -25,8 +27,13 @@ app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 app.use("/uploads", express.static(path.resolve(process.cwd(), env.UPLOAD_DIR)));
 
-app.get("/health", (_req, res) => {
-  res.json({ success: true, message: "Server is running" });
+app.get("/health", async (_req, res) => {
+  const redisOk = isRedisEnabled() ? await cache.ping() : null;
+  res.json({
+    success: true,
+    message: "Server is running",
+    redis: isRedisEnabled() ? (redisOk ? "connected" : "error") : "disabled",
+  });
 });
 
 app.use("/api/auth", authRoutes);

@@ -10,6 +10,7 @@ export interface IUser extends Document {
   professional?: string;
   religious?: string;
   hobby?: string;
+  relationStatus?: string;
   dateOfBirth?: Date;
   isOnline: boolean;
   lastSeen: Date;
@@ -33,6 +34,7 @@ const userSchema = new Schema<IUser>(
     professional: { type: String, default: "", trim: true, maxlength: 200 },
     religious: { type: String, default: "", trim: true, maxlength: 100 },
     hobby: { type: String, default: "", trim: true, maxlength: 300 },
+    relationStatus: { type: String, default: "", trim: true, maxlength: 100 },
     dateOfBirth: { type: Date },
     isOnline: { type: Boolean, default: false },
     lastSeen: { type: Date, default: Date.now },

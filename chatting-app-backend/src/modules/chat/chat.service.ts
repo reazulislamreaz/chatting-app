@@ -2,9 +2,17 @@ import mongoose from "mongoose";
 import { Message } from "../message/message.model";
 import { friendRequestService } from "../friendRequest/friendRequest.service";
 import { resolveImageUrl } from "../../config/s3";
+import { cache } from "../../cache/cache.service";
+import { keys, TTL } from "../../cache/keys";
 
 export class ChatService {
   async getChatList(userId: string) {
+    return cache.getOrSet(keys.chatList(userId), TTL.CHAT_LIST, () =>
+      this.buildChatList(userId)
+    );
+  }
+
+  private async buildChatList(userId: string) {
     const friends = await friendRequestService.getFriends(userId);
     if (friends.length === 0) return [];
 

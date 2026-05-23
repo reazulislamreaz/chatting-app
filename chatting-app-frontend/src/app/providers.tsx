@@ -1,11 +1,13 @@
 "use client";
 
 import { Toaster } from "react-hot-toast";
+import { QueryProvider } from "@/components/QueryProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { ChatProvider } from "@/context/ChatContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
+    <QueryProvider>
     <AuthProvider>
       <ChatProvider>
         {children}
@@ -37,5 +39,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
         />
       </ChatProvider>
     </AuthProvider>
+    </QueryProvider>
   );
 }

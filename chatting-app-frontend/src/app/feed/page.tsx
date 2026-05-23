@@ -1,63 +1,98 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/AppLayout";
 import { CreatePost } from "@/components/CreatePost";
 import { PostCard } from "@/components/PostCard";
 import { PageHeader } from "@/components/PageHeader";
 import { Spinner } from "@/components/Spinner";
 import { EmptyState } from "@/components/EmptyState";
-import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
+import { useFeedInfiniteQuery } from "@/hooks/queries";
 import { useAuth } from "@/context/AuthContext";
-import type { Post, ApiResponse } from "@/types";
+import type { Post } from "@/types";
 
 export default function FeedPage() {
   const { user } = useAuth();
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const queryClient = useQueryClient();
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useFeedInfiniteQuery();
 
-  const fetchFeed = useCallback(async (pageNum: number, append = false) => {
-    const res = await api<
-      ApiResponse<{
-        posts: Post[];
-        pagination: { page: number; totalPages: number };
-      }>
-    >(`/posts?page=${pageNum}&limit=10`);
-
-    setPosts((prev) => (append ? [...prev, ...res.data.posts] : res.data.posts));
-    setHasMore(res.data.pagination.page < res.data.pagination.totalPages);
-    setPage(pageNum);
-  }, []);
-
-  useEffect(() => {
-    fetchFeed(1).finally(() => setLoading(false));
-  }, [fetchFeed]);
+  const posts = data?.pages.flatMap((page) => page.posts) ?? [];
 
   const handlePostCreated = (post: Post) => {
-    setPosts((prev) => [post, ...prev]);
+    queryClient.setQueryData(
+      queryKeys.feed,
+      (
+        old:
+          | {
+              pages: { posts: Post[]; pagination: { page: number; totalPages: number } }[];
+              pageParams: number[];
+            }
+          | undefined,
+      ) => {
+        if (!old?.pages.length) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page, i) =>
+            i === 0 ? { ...page, posts: [post, ...page.posts] } : page,
+          ),
+        };
+      },
+    );
   };
 
   const handlePostUpdate = (postId: string, updates: Partial<Post>) => {
-    setPosts((prev) =>
-      prev.map((p) => (p.id === postId ? { ...p, ...updates } : p))
+    queryClient.setQueryData(
+      queryKeys.feed,
+      (
+        old:
+          | {
+              pages: { posts: Post[]; pagination: { page: number; totalPages: number } }[];
+              pageParams: number[];
+            }
+          | undefined,
+      ) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            posts: page.posts.map((p) =>
+              p.id === postId ? { ...p, ...updates } : p,
+            ),
+          })),
+        };
+      },
     );
   };
 
   const handlePostRemove = (postId: string) => {
-    setPosts((prev) => prev.filter((p) => p.id !== postId));
-  };
-
-  const loadMore = async () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    try {
-      await fetchFeed(page + 1, true);
-    } finally {
-      setLoadingMore(false);
-    }
+    queryClient.setQueryData(
+      queryKeys.feed,
+      (
+        old:
+          | {
+              pages: { posts: Post[]; pagination: { page: number; totalPages: number } }[];
+              pageParams: number[];
+            }
+          | undefined,
+      ) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            posts: page.posts.filter((p) => p.id !== postId),
+          })),
+        };
+      },
+    );
   };
 
   return (
@@ -71,7 +106,7 @@ export default function FeedPage() {
           <div className="page-container mx-auto max-w-2xl space-y-4 sm:space-y-6">
             <CreatePost onPostCreated={handlePostCreated} />
 
-            {loading ? (
+            {isLoading ? (
               <div className="flex justify-center py-16">
                 <Spinner />
               </div>
@@ -98,14 +133,14 @@ export default function FeedPage() {
                     />
                   ))}
                 </div>
-                {hasMore && (
+                {hasNextPage && (
                   <div className="flex justify-center pb-4">
                     <button
-                      onClick={loadMore}
-                      disabled={loadingMore}
+                      onClick={() => fetchNextPage()}
+                      disabled={isFetchingNextPage}
                       className="btn-secondary"
                     >
-                      {loadingMore ? "Loading..." : "Load more posts"}
+                      {isFetchingNextPage ? "Loading..." : "Load more posts"}
                     </button>
                   </div>
                 )}

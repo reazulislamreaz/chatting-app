@@ -8,6 +8,9 @@ import {
   deleteFromS3ByUrl,
 } from "../../config/s3";
 import type { MessagePayload } from "../../socket/message.events";
+import { cache } from "../../cache/cache.service";
+import { cacheInvalidate } from "../../cache/invalidate";
+import { keys, TTL } from "../../cache/keys";
 
 function formatMessage(message: {
   _id: { toString(): string };
@@ -82,6 +85,8 @@ export class MessageService {
       imageUrl,
     });
 
+    await cacheInvalidate.onNewMessage(senderId, receiverId);
+
     return formatMessage(message as IMessage);
   }
 
@@ -116,6 +121,11 @@ export class MessageService {
     message.editedAt = new Date();
     await message.save();
 
+    const senderId = message.senderId.toString();
+    const receiverId = message.receiverId.toString();
+    await cacheInvalidate.messages(senderId, receiverId);
+    await cacheInvalidate.chatLists(senderId, receiverId);
+
     return formatMessage(message as IMessage);
   }
 
@@ -132,6 +142,11 @@ export class MessageService {
     message.editedAt = undefined;
     await message.save();
 
+    const senderId = message.senderId.toString();
+    const receiverId = message.receiverId.toString();
+    await cacheInvalidate.messages(senderId, receiverId);
+    await cacheInvalidate.chatLists(senderId, receiverId);
+
     return formatMessage(message as IMessage);
   }
 
@@ -146,6 +161,23 @@ export class MessageService {
       throw new AppError(403, "You can only view messages with friends");
     }
 
+    if (page <= 3) {
+      return cache.getOrSet(
+        keys.messages(userId, otherUserId, page),
+        TTL.MESSAGES_PAGE,
+        () => this.fetchConversation(userId, otherUserId, page, limit)
+      );
+    }
+
+    return this.fetchConversation(userId, otherUserId, page, limit);
+  }
+
+  private async fetchConversation(
+    userId: string,
+    otherUserId: string,
+    page: number,
+    limit: number
+  ) {
     const conversationFilter = {
       $or: [
         { senderId: userId, receiverId: otherUserId },
@@ -181,6 +213,11 @@ export class MessageService {
       { senderId, receiverId, read: false },
       { read: true, readAt: new Date() }
     );
+
+    if (result.modifiedCount > 0) {
+      await cacheInvalidate.onMarkRead(receiverId, senderId);
+      await cacheInvalidate.messages(receiverId, senderId);
+    }
 
     return { modifiedCount: result.modifiedCount };
   }

@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth.middleware";
 import { userService } from "./user.service";
+import { friendRequestService } from "../friendRequest/friendRequest.service";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { getParamId } from "../../utils/params";
 
@@ -11,7 +12,8 @@ export class UserController {
   });
 
   updateProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { name, address, professional, religious, hobby, dateOfBirth } = req.body;
+    const { name, address, professional, religious, hobby, relationStatus, dateOfBirth } =
+      req.body;
 
     const user = await userService.updateProfile(req.user!.userId, {
       name,
@@ -19,6 +21,7 @@ export class UserController {
       professional,
       religious,
       hobby,
+      relationStatus,
       dateOfBirth,
       imageFile: req.file,
     });
@@ -36,8 +39,13 @@ export class UserController {
   });
 
   getUserById = asyncHandler(async (req: AuthRequest, res: Response) => {
-    const user = await userService.getUserById(getParamId(req.params.id));
-    res.json({ success: true, data: user });
+    const targetId = getParamId(req.params.id);
+    const user = await userService.getUserById(targetId);
+    const relationship = await friendRequestService.getRelationshipStatus(
+      req.user!.userId,
+      targetId
+    );
+    res.json({ success: true, data: { ...user, relationship } });
   });
 }
 

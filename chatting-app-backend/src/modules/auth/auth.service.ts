@@ -8,6 +8,9 @@ import { USER_PROFILE_SELECT, USER_EXISTS_SELECT } from "../../constants/queryFi
 import { Message } from "../message/message.model";
 import { Post, PostLike, Comment } from "../post/post.model";
 import { FriendRequest } from "../friendRequest/friendRequest.model";
+import { cache } from "../../cache/cache.service";
+import { cacheInvalidate } from "../../cache/invalidate";
+import { keys, TTL } from "../../cache/keys";
 
 const SALT_ROUNDS = 12;
 
@@ -69,6 +72,7 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
     await User.findByIdAndUpdate(userId, { password: hashedPassword });
+    await cacheInvalidate.authMe(userId);
 
     return { message: "Password changed successfully" };
   }
@@ -125,10 +129,20 @@ export class AuthService {
       s3Urls.map((url) => deleteFromS3ByUrl(resolveImageUrl(url)))
     );
 
+    await cacheInvalidate.userProfile(userId);
+    await cacheInvalidate.friends(userId);
+    await cacheInvalidate.chatList(userId);
+
     return { message: "Account deleted successfully" };
   }
 
   async getMe(userId: string) {
+    return cache.getOrSet(keys.authMe(userId), TTL.AUTH_ME, () =>
+      this.fetchMe(userId)
+    );
+  }
+
+  private async fetchMe(userId: string) {
     const user = await User.findById(userId)
       .select(USER_PROFILE_SELECT)
       .lean();
@@ -146,6 +160,7 @@ export class AuthService {
       professional: user.professional ?? "",
       religious: user.religious ?? "",
       hobby: user.hobby ?? "",
+      relationStatus: user.relationStatus ?? "",
       dateOfBirth,
       isOnline: user.isOnline,
       lastSeen: user.lastSeen,

@@ -1,15 +1,19 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/PageHeader";
 import { Spinner } from "@/components/Spinner";
 import { api, clearToken } from "@/lib/api";
+import { invalidateProfile } from "@/lib/invalidateCache";
+import { useProfileQuery } from "@/hooks/queries";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import type { User, ApiResponse } from "@/types";
+import { RELATION_STATUS_OPTIONS } from "@/lib/relationStatus";
 
 function applyProfileToForm(profile: User, setters: {
   setName: (v: string) => void;
@@ -17,6 +21,7 @@ function applyProfileToForm(profile: User, setters: {
   setProfessional: (v: string) => void;
   setReligious: (v: string) => void;
   setHobby: (v: string) => void;
+  setRelationStatus: (v: string) => void;
   setDateOfBirth: (v: string) => void;
 }) {
   setters.setName(profile.name ?? "");
@@ -24,22 +29,29 @@ function applyProfileToForm(profile: User, setters: {
   setters.setProfessional(profile.professional ?? "");
   setters.setReligious(profile.religious ?? "");
   setters.setHobby(profile.hobby ?? "");
+  setters.setRelationStatus(profile.relationStatus ?? "");
   setters.setDateOfBirth(profile.dateOfBirth ?? "");
 }
 
 export default function DashboardPage() {
   const { user, refreshUser } = useAuth();
   const router = useRouter();
-  const [profile, setProfile] = useState<User | null>(null);
+  const queryClient = useQueryClient();
+  const {
+    data: profile,
+    isLoading: fetching,
+    refetch: refetchProfile,
+  } = useProfileQuery();
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [professional, setProfessional] = useState("");
   const [religious, setReligious] = useState("");
   const [hobby, setHobby] = useState("");
+  const [relationStatus, setRelationStatus] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
+  const [formSynced, setFormSynced] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -47,23 +59,20 @@ export default function DashboardPage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const loadProfile = () => {
-    return api<ApiResponse<User>>("/users/profile").then((res) => {
-      setProfile(res.data);
-      applyProfileToForm(res.data, {
+  useEffect(() => {
+    if (profile && !formSynced) {
+      applyProfileToForm(profile, {
         setName,
         setAddress,
         setProfessional,
         setReligious,
         setHobby,
+        setRelationStatus,
         setDateOfBirth,
       });
-    });
-  };
-
-  useEffect(() => {
-    loadProfile().finally(() => setFetching(false));
-  }, []);
+      setFormSynced(true);
+    }
+  }, [profile, formSynced]);
 
   const handleProfileSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -75,12 +84,15 @@ export default function DashboardPage() {
       formData.append("professional", professional);
       formData.append("religious", religious);
       formData.append("hobby", hobby);
+      formData.append("relationStatus", relationStatus);
       formData.append("dateOfBirth", dateOfBirth);
       if (avatarFile) formData.append("profilePicture", avatarFile);
 
       await api("/users/profile", { method: "PATCH", body: formData });
       await refreshUser();
-      await loadProfile();
+      await invalidateProfile(queryClient);
+      await refetchProfile();
+      setFormSynced(false);
       toastSuccess("Profile updated successfully");
       setAvatarFile(null);
     } catch (err) {
@@ -177,6 +189,11 @@ export default function DashboardPage() {
                     {profile?.name || user?.name}
                   </h2>
                   <p className="text-sm text-slate-500">{email}</p>
+                  {profile?.relationStatus && (
+                    <p className="mt-1 text-sm font-medium text-brand-600">
+                      {profile.relationStatus}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -279,6 +296,23 @@ export default function DashboardPage() {
                     className="input-field"
                     placeholder="Reading, sports, music..."
                   />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                    Relation status
+                  </label>
+                  <select
+                    value={relationStatus}
+                    onChange={(e) => setRelationStatus(e.target.value)}
+                    className="input-field"
+                  >
+                    {RELATION_STATUS_OPTIONS.map((opt) => (
+                      <option key={opt.value || "none"} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

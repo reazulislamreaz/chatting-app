@@ -6,6 +6,7 @@ export const updateProfileSchema = z.object({
   professional: z.string().max(200).trim().optional(),
   religious: z.string().max(100).trim().optional(),
   hobby: z.string().max(300).trim().optional(),
+  relationStatus: z.string().max(100).trim().optional(),
   dateOfBirth: z
     .string()
     .optional()

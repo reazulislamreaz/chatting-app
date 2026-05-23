@@ -8,10 +8,13 @@ import {
   useState,
   ReactNode,
 } from "react";
-import { api } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { getSocket } from "@/lib/socket";
+import { queryKeys } from "@/lib/queryKeys";
+import { invalidateChats } from "@/lib/invalidateCache";
+import { useChatsQuery } from "@/hooks/queries";
 import { useAuth } from "./AuthContext";
-import type { ChatListItem, Message, ApiResponse } from "@/types";
+import type { ChatListItem, Message } from "@/types";
 
 interface ChatContextType {
   chatList: ChatListItem[];
@@ -24,26 +27,13 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [chatList, setChatList] = useState<ChatListItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const { data: chatList = [], isLoading, refetch } = useChatsQuery(!!user);
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
 
   const refreshChatList = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const res = await api<ApiResponse<ChatListItem[]>>("/chats");
-      setChatList(res.data);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
-      refreshChatList();
-    }
-  }, [user, refreshChatList]);
+    await refetch();
+  }, [refetch]);
 
   useEffect(() => {
     if (!user) return;
@@ -51,13 +41,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const socket = getSocket();
 
     const onReceiveMessage = (message: Message) => {
-      setChatList((prev) => {
+      queryClient.setQueryData<ChatListItem[]>(queryKeys.chats, (prev) => {
+        if (!prev) return prev;
+
         const otherId =
           message.senderId === user.id ? message.receiverId : message.senderId;
         const existing = prev.find((c) => c.user.id === otherId);
 
         if (!existing) {
-          refreshChatList();
+          void invalidateChats(queryClient);
           return prev;
         }
 
@@ -92,7 +84,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     };
 
     const onMessagesRead = () => {
-      refreshChatList();
+      void invalidateChats(queryClient);
     };
 
     const onTyping = (data: { userId: string; isTyping: boolean }) => {
@@ -111,11 +103,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       socket.off("messages_read", onMessagesRead);
       socket.off("typing", onTyping);
     };
-  }, [user, refreshChatList]);
+  }, [user, queryClient]);
 
   return (
     <ChatContext.Provider
-      value={{ chatList, loading, refreshChatList, typingUsers }}
+      value={{
+        chatList,
+        loading: isLoading,
+        refreshChatList,
+        typingUsers,
+      }}
     >
       {children}
     </ChatContext.Provider>

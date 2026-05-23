@@ -11,6 +11,9 @@ import {
   FRIEND_REQUEST_SELECT,
   USER_EXISTS_SELECT,
 } from "../../constants/queryFields";
+import { cache } from "../../cache/cache.service";
+import { cacheInvalidate } from "../../cache/invalidate";
+import { keys, TTL } from "../../cache/keys";
 
 const POPULATE_USER_FIELDS = "name email profilePicture isOnline lastSeen";
 
@@ -46,6 +49,9 @@ export class FriendRequestService {
       if (existing.status === "rejected") {
         if (existing.senderId.toString() === senderId) {
           await FriendRequest.findByIdAndUpdate(existing._id, { status: "pending" });
+          await cacheInvalidate.relation(senderId, receiverId);
+          await cacheInvalidate.friendRequests(senderId);
+          await cacheInvalidate.friendRequests(receiverId);
           return this.populateRequest(existing._id.toString());
         }
         throw new AppError(409, "Previous request was rejected");
@@ -53,6 +59,9 @@ export class FriendRequestService {
     }
 
     const request = await FriendRequest.create({ senderId, receiverId });
+    await cacheInvalidate.relation(senderId, receiverId);
+    await cacheInvalidate.friendRequests(senderId);
+    await cacheInvalidate.friendRequests(receiverId);
     return this.populateRequest(request._id.toString());
   }
 
@@ -80,10 +89,24 @@ export class FriendRequestService {
       status: action === "accept" ? "accepted" : "rejected",
     });
 
+    const otherUserId =
+      request.senderId.toString() === receiverId
+        ? request.receiverId.toString()
+        : request.senderId.toString();
+    await cacheInvalidate.onFriendChange(receiverId, otherUserId);
+
     return this.populateRequest(requestId);
   }
 
   async getPendingReceived(userId: string) {
+    return cache.getOrSet(
+      keys.friendReqReceived(userId),
+      TTL.FRIENDREQ,
+      () => this.fetchPendingReceived(userId)
+    );
+  }
+
+  private async fetchPendingReceived(userId: string) {
     const requests = await FriendRequest.find({
       receiverId: userId,
       status: "pending",
@@ -107,6 +130,14 @@ export class FriendRequestService {
   }
 
   async getPendingSent(userId: string) {
+    return cache.getOrSet(
+      keys.friendReqSent(userId),
+      TTL.FRIENDREQ,
+      () => this.fetchPendingSent(userId)
+    );
+  }
+
+  private async fetchPendingSent(userId: string) {
     const requests = await FriendRequest.find({
       senderId: userId,
       status: "pending",
@@ -130,6 +161,12 @@ export class FriendRequestService {
   }
 
   async getFriends(userId: string) {
+    return cache.getOrSet(keys.friends(userId), TTL.FRIENDS, () =>
+      this.fetchFriends(userId)
+    );
+  }
+
+  private async fetchFriends(userId: string) {
     const friendships = await FriendRequest.find({
       status: "accepted",
       $or: [{ senderId: userId }, { receiverId: userId }],
@@ -155,7 +192,60 @@ export class FriendRequestService {
     });
   }
 
+  async getRelationshipStatus(currentUserId: string, otherUserId: string) {
+    if (currentUserId === otherUserId) {
+      return { status: "self" as const };
+    }
+
+    return cache.getOrSet(
+      keys.relation(currentUserId, otherUserId),
+      TTL.RELATION,
+      () => this.fetchRelationshipStatus(currentUserId, otherUserId)
+    );
+  }
+
+  private async fetchRelationshipStatus(
+    currentUserId: string,
+    otherUserId: string
+  ) {
+    const request = await FriendRequest.findOne({
+      $or: [
+        { senderId: currentUserId, receiverId: otherUserId },
+        { senderId: otherUserId, receiverId: currentUserId },
+      ],
+    })
+      .select("_id senderId receiverId status")
+      .lean();
+
+    if (!request) {
+      return { status: "none" as const };
+    }
+
+    if (request.status === "accepted") {
+      return { status: "friends" as const, requestId: request._id.toString() };
+    }
+
+    if (request.status === "pending") {
+      if (request.senderId.toString() === currentUserId) {
+        return {
+          status: "pending_sent" as const,
+          requestId: request._id.toString(),
+        };
+      }
+      return {
+        status: "pending_received" as const,
+        requestId: request._id.toString(),
+      };
+    }
+
+    return { status: "none" as const };
+  }
+
   async areFriends(userId1: string, userId2: string): Promise<boolean> {
+    const cacheKey = keys.friendship(userId1, userId2);
+    const cached = await cache.get<boolean>(cacheKey);
+    if (cached !== null) return cached;
+
     const friendship = await FriendRequest.findOne({
       status: "accepted",
       $or: [
@@ -165,7 +255,9 @@ export class FriendRequestService {
     })
       .select("_id")
       .lean();
-    return !!friendship;
+    const result = !!friendship;
+    await cache.set(cacheKey, result, TTL.FRIENDSHIP);
+    return result;
   }
 
   private async populateRequest(requestId: string) {

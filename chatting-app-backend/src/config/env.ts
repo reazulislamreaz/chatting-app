@@ -18,6 +18,17 @@ const envSchema = z.object({
   AWS_ACCESS_KEY_ID: z.string().min(1),
   AWS_SECRET_ACCESS_KEY: z.string().min(1),
   AWS_BUCKET_NAME: z.string().min(1),
+  REDIS_URL: z
+    .string()
+    .optional()
+    .transform((v) => {
+      const trimmed = v?.trim();
+      return trimmed && trimmed.length > 0 ? trimmed : undefined;
+    }),
+  REDIS_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
 });
 
 const parsed = envSchema.safeParse(process.env);

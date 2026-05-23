@@ -1,3 +1,15 @@
+export type FriendshipStatus =
+  | "self"
+  | "friends"
+  | "pending_sent"
+  | "pending_received"
+  | "none";
+
+export interface UserRelationship {
+  status: FriendshipStatus;
+  requestId?: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -7,9 +19,11 @@ export interface User {
   professional?: string;
   religious?: string;
   hobby?: string;
+  relationStatus?: string;
   dateOfBirth?: string;
   isOnline?: boolean;
   lastSeen?: string;
+  relationship?: UserRelationship;
 }
 
 export interface AuthResponse {

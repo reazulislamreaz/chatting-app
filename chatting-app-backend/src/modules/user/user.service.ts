@@ -2,6 +2,9 @@ import { User } from "../auth/auth.model";
 import { AppError } from "../../utils/AppError";
 import { uploadImageToS3, resolveImageUrl } from "../../config/s3";
 import { USER_LIST_SELECT, USER_PROFILE_SELECT } from "../../constants/queryFields";
+import { cache } from "../../cache/cache.service";
+import { cacheInvalidate } from "../../cache/invalidate";
+import { keys, TTL } from "../../cache/keys";
 
 export interface UpdateProfileData {
   name?: string;
@@ -9,6 +12,7 @@ export interface UpdateProfileData {
   professional?: string;
   religious?: string;
   hobby?: string;
+  relationStatus?: string;
   dateOfBirth?: string;
   profilePictureUrl?: string;
   imageFile?: Express.Multer.File;
@@ -23,6 +27,7 @@ type UserDoc = {
   professional?: string;
   religious?: string;
   hobby?: string;
+  relationStatus?: string;
   dateOfBirth?: Date;
   isOnline?: boolean;
   lastSeen?: Date;
@@ -43,6 +48,7 @@ function formatUserDoc(u: UserDoc) {
     professional: u.professional ?? "",
     religious: u.religious ?? "",
     hobby: u.hobby ?? "",
+    relationStatus: u.relationStatus ?? "",
     dateOfBirth: formatDateOfBirth(u.dateOfBirth),
     isOnline: u.isOnline,
     lastSeen: u.lastSeen,
@@ -51,6 +57,12 @@ function formatUserDoc(u: UserDoc) {
 
 export class UserService {
   async getProfile(userId: string) {
+    return cache.getOrSet(keys.authMe(userId), TTL.AUTH_ME, () =>
+      this.fetchProfile(userId)
+    );
+  }
+
+  private async fetchProfile(userId: string) {
     const user = await User.findById(userId).select(USER_PROFILE_SELECT).lean();
     if (!user) {
       throw new AppError(404, "User not found");
@@ -66,6 +78,7 @@ export class UserService {
     if (data.professional !== undefined) update.professional = data.professional;
     if (data.religious !== undefined) update.religious = data.religious;
     if (data.hobby !== undefined) update.hobby = data.hobby;
+    if (data.relationStatus !== undefined) update.relationStatus = data.relationStatus;
     if (data.dateOfBirth !== undefined) {
       update.dateOfBirth = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
     }
@@ -84,6 +97,8 @@ export class UserService {
     if (!user) {
       throw new AppError(404, "User not found");
     }
+
+    await cacheInvalidate.onUserProfileUpdate(userId);
 
     return formatUserDoc(user as UserDoc);
   }
@@ -124,6 +139,12 @@ export class UserService {
   }
 
   async getUserById(userId: string) {
+    return cache.getOrSet(keys.user(userId), TTL.USER, () =>
+      this.fetchUserById(userId)
+    );
+  }
+
+  private async fetchUserById(userId: string) {
     const user = await User.findById(userId).select(USER_LIST_SELECT).lean();
     if (!user) {
       throw new AppError(404, "User not found");

@@ -6,6 +6,9 @@ import {
   deleteFromS3ByUrl,
 } from "../../config/s3";
 import { isPopulatedUser, PopulatedUser } from "../../utils/populatedUser";
+import { cache } from "../../cache/cache.service";
+import { cacheInvalidate } from "../../cache/invalidate";
+import { keys, TTL } from "../../cache/keys";
 
 function formatAuthor(user: PopulatedUser) {
   return {
@@ -46,6 +49,8 @@ export class PostService {
       throw new AppError(500, "Failed to create post");
     }
 
+    await cacheInvalidate.feedAll();
+
     return {
       id: populated._id.toString(),
       content: populated.content,
@@ -59,6 +64,16 @@ export class PostService {
   }
 
   async getFeed(userId: string, page = 1, limit = 20) {
+    const globalVersion =
+      (await cache.getCounter(keys.feedGlobalVersion())) ?? 0;
+    const cacheKey = keys.feed(userId, globalVersion, page);
+
+    return cache.getOrSet(cacheKey, TTL.FEED, () =>
+      this.fetchFeed(userId, page, limit)
+    );
+  }
+
+  private async fetchFeed(userId: string, page = 1, limit = 20) {
     const skip = (page - 1) * limit;
 
     const [posts, total] = await Promise.all([
@@ -125,6 +140,7 @@ export class PostService {
       )
         .select("likesCount")
         .lean();
+      await cacheInvalidate.feedAll();
       return { liked: false, likesCount: Math.max(0, updated?.likesCount ?? 0) };
     }
 
@@ -137,6 +153,7 @@ export class PostService {
       .select("likesCount")
       .lean();
 
+    await cacheInvalidate.feedAll();
     return { liked: true, likesCount: updated?.likesCount ?? 0 };
   }
 
@@ -158,6 +175,9 @@ export class PostService {
       throw new AppError(500, "Failed to create comment");
     }
 
+    await cacheInvalidate.comments(postId);
+    await cacheInvalidate.feedAll();
+
     return {
       id: populated._id.toString(),
       postId: populated.postId.toString(),
@@ -173,6 +193,18 @@ export class PostService {
       throw new AppError(404, "Post not found");
     }
 
+    if (page <= 3) {
+      return cache.getOrSet(
+        keys.comments(postId, page),
+        TTL.COMMENTS,
+        () => this.fetchComments(postId, page, limit)
+      );
+    }
+
+    return this.fetchComments(postId, page, limit);
+  }
+
+  private async fetchComments(postId: string, page = 1, limit = 30) {
     const skip = (page - 1) * limit;
 
     const [comments, total] = await Promise.all([
@@ -254,6 +286,8 @@ export class PostService {
 
     const liked = await PostLike.exists({ postId, userId });
 
+    await cacheInvalidate.feedAll();
+
     return {
       id: populated._id.toString(),
       content: populated.content,
@@ -286,6 +320,8 @@ export class PostService {
       throw new AppError(500, "Failed to update comment");
     }
 
+    await cacheInvalidate.comments(populated.postId.toString());
+
     return {
       id: populated._id.toString(),
       postId: populated.postId.toString(),
@@ -311,6 +347,9 @@ export class PostService {
       await post.save();
     }
 
+    await cacheInvalidate.comments(comment.postId.toString());
+    await cacheInvalidate.feedAll();
+
     return { message: "Comment deleted", postId: comment.postId.toString() };
   }
 
@@ -332,6 +371,9 @@ export class PostService {
       Comment.deleteMany({ postId }),
       Post.findByIdAndDelete(postId),
     ]);
+
+    await cacheInvalidate.comments(postId);
+    await cacheInvalidate.feedAll();
 
     return { message: "Post deleted" };
   }
