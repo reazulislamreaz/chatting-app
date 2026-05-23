@@ -143,10 +143,11 @@ Connect with JWT: `auth: { token: "<jwt>" }`
 | message_read     | Client→Server | `{ senderId }`                     |
 | messages_read    | Server→Client | `{ readerId, modifiedCount }`      |
 | typing           | Both      | `{ receiverId, isTyping }` / `{ userId, isTyping }` |
+| user_presence    | Server→Client | `{ userId, isOnline, lastSeen? }` (friends only) |
 | message_updated  | Server→Client | Message object                   |
 | message_deleted  | Server→Client | Message object                   |
 
-Socket events are rate-limited per connection (send, typing, read). Presence is stored in Redis when enabled (no global online/offline broadcast).
+Socket events are rate-limited per connection (send, typing, read). Online status is broadcast only to friends (`user_presence`), not to all connected clients.
 
 ## Frontend Pages
 

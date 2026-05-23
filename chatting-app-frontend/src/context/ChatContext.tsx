@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   ReactNode,
 } from "react";
@@ -12,6 +13,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getSocket } from "@/lib/socket";
 import { queryKeys } from "@/lib/queryKeys";
 import { invalidateChats } from "@/lib/invalidateCache";
+import {
+  applyUserPresence,
+  type UserPresencePayload,
+} from "@/lib/presenceCache";
 import { useChatsQuery } from "@/hooks/queries";
 import { useAuth } from "./AuthContext";
 import type { ChatListItem, Message } from "@/types";
@@ -36,6 +41,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     refetch,
   } = useChatsQuery(!!user);
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
+  const typingClearTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>(
+    {},
+  );
 
   const refreshChatList = useCallback(async () => {
     await refetch();
@@ -112,20 +120,42 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     };
 
     const onTyping = (data: { userId: string; isTyping: boolean }) => {
+      const { userId: typerId } = data;
+
+      if (typingClearTimers.current[typerId]) {
+        clearTimeout(typingClearTimers.current[typerId]);
+        delete typingClearTimers.current[typerId];
+      }
+
       setTypingUsers((prev) => ({
         ...prev,
-        [data.userId]: data.isTyping,
+        [typerId]: data.isTyping,
       }));
+
+      if (data.isTyping) {
+        typingClearTimers.current[typerId] = setTimeout(() => {
+          setTypingUsers((prev) => ({ ...prev, [typerId]: false }));
+          delete typingClearTimers.current[typerId];
+        }, 3000);
+      }
+    };
+
+    const onUserPresence = (payload: UserPresencePayload) => {
+      applyUserPresence(queryClient, payload);
     };
 
     socket.on("receive_message", onReceiveMessage);
     socket.on("messages_read", onMessagesRead);
     socket.on("typing", onTyping);
+    socket.on("user_presence", onUserPresence);
 
     return () => {
       socket.off("receive_message", onReceiveMessage);
       socket.off("messages_read", onMessagesRead);
       socket.off("typing", onTyping);
+      socket.off("user_presence", onUserPresence);
+      Object.values(typingClearTimers.current).forEach(clearTimeout);
+      typingClearTimers.current = {};
     };
   }, [user, queryClient]);
 

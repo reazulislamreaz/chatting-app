@@ -2,6 +2,7 @@ import { Server, Socket } from "socket.io";
 import { verifyToken } from "../utils/jwt";
 import { messageService } from "../modules/message/message.service";
 import { presenceService } from "../services/presence.service";
+import { broadcastPresenceToFriends } from "../services/presence.broadcast";
 import { setSocketServer, emitReceiveMessage } from "./message.events";
 import { createEventRateLimiter } from "./rateLimit";
 import { setupCallHandlers } from "./call.handler";
@@ -37,10 +38,15 @@ export function setupSocket(io: Server): void {
     socket.join(`user:${userId}`);
 
     const limitSend = createEventRateLimiter(60, 60_000);
-    const limitTyping = createEventRateLimiter(30, 60_000);
+    const limitTyping = createEventRateLimiter(120, 60_000);
     const limitRead = createEventRateLimiter(120, 60_000);
 
     await presenceService.markOnline(userId);
+    void broadcastPresenceToFriends(io, userId, true);
+
+    const presenceHeartbeat = setInterval(() => {
+      void presenceService.refreshOnline(userId);
+    }, 45_000);
 
     socket.on(
       "send_message",
@@ -99,7 +105,10 @@ export function setupSocket(io: Server): void {
     setupCallHandlers(io, socket);
 
     socket.on("disconnect", async () => {
+      clearInterval(presenceHeartbeat);
+      const lastSeen = new Date();
       await presenceService.markOffline(userId);
+      void broadcastPresenceToFriends(io, userId, false, lastSeen);
     });
   });
 }

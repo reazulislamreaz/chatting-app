@@ -166,6 +166,22 @@ export class FriendRequestService {
     );
   }
 
+  /** Friend user IDs only — used for presence broadcasts. */
+  async getFriendIds(userId: string): Promise<string[]> {
+    const friendships = await FriendRequest.find({
+      status: "accepted",
+      $or: [{ senderId: userId }, { receiverId: userId }],
+    })
+      .select("senderId receiverId")
+      .lean();
+
+    return friendships.map((f) =>
+      f.senderId.toString() === userId
+        ? f.receiverId.toString()
+        : f.senderId.toString(),
+    );
+  }
+
   private async fetchFriends(userId: string) {
     const friendships = await FriendRequest.find({
       status: "accepted",

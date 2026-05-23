@@ -42,6 +42,7 @@ export default function ChatPage() {
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTypingEmitRef = useRef(0);
   const markedReadRef = useRef(false);
 
   const markConversationRead = useCallback(() => {
@@ -161,14 +162,22 @@ export default function ChatPage() {
   }, [user, otherUserId, appendMessage, replaceMessage, markConversationRead, refreshChatList]);
 
   const emitTyping = (isTyping: boolean) => {
+    const now = Date.now();
+    if (isTyping) {
+      if (now - lastTypingEmitRef.current < 2000) return;
+      lastTypingEmitRef.current = now;
+    }
     getSocket().emit("typing", { receiverId: otherUserId, isTyping });
   };
 
   const handleInputChange = (value: string) => {
-    emitTyping(true);
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => emitTyping(false), 1500);
-    if (!value.trim()) emitTyping(false);
+    if (value.trim()) {
+      emitTyping(true);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => emitTyping(false), 1500);
+    } else {
+      emitTyping(false);
+    }
   };
 
   const handleSendText = (text: string) => {

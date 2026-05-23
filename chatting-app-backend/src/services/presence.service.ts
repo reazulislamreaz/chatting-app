@@ -5,14 +5,12 @@ const ONLINE_KEY = (userId: string) => `presence:online:${userId}`;
 const ONLINE_TTL_SEC = 120;
 
 /**
- * Tracks online users in Redis when available (no Mongo write on connect).
- * Falls back to Mongo when Redis is disabled.
+ * Tracks online users in Mongo (for API responses) and Redis (fast lookup + TTL).
  */
 export const presenceService = {
   async markOnline(userId: string): Promise<void> {
     if (isRedisEnabled()) {
       await getRedis().setex(ONLINE_KEY(userId), ONLINE_TTL_SEC, "1");
-      return;
     }
     await userService.setOnlineStatus(userId, true);
   },
