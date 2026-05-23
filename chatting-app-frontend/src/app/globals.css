@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-wa-panel text-slate-900 antialiased;
+  }
+
+  * {
+    @apply border-surface-border;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply border border-white/60 bg-white/95 backdrop-blur-xl;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-surface-border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-xl bg-brand-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-500/25 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-xl border border-surface-border bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50;
+  }
+
+  .page-shell {
+    @apply flex h-full min-h-0 flex-col animate-fade-in;
+  }
+
+  .page-header {
+    @apply sticky top-0 z-10 shrink-0 border-b border-surface-border bg-white/95 px-4 py-3 backdrop-blur-md sm:px-6 sm:py-4;
+  }
+
+  .page-content {
+    @apply flex-1 overflow-y-auto p-4 sm:p-5 md:p-6;
+  }
+
+  .page-container {
+    @apply mx-auto w-full max-w-app;
+  }
+
+  .card {
+    @apply rounded-2xl border border-surface-border bg-white p-4 shadow-card sm:p-5;
+  }
+
+  .wa-chat-bg {
+    background-color: #e7ede8;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c8d4c9' fill-opacity='0.25'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #c5d0c6 transparent;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+}
