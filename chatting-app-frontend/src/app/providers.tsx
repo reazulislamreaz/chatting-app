@@ -5,14 +5,20 @@ import { QueryProvider } from "@/components/QueryProvider";
 import { QueryLoadingBar } from "@/components/QueryLoadingBar";
 import { AuthProvider } from "@/context/AuthContext";
 import { ChatProvider } from "@/context/ChatContext";
+import { CallProvider } from "@/context/CallContext";
+import { IncomingCallModal } from "@/components/IncomingCallModal";
+import { ActiveCallBar } from "@/components/ActiveCallBar";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryProvider>
       <QueryLoadingBar />
     <AuthProvider>
+      <CallProvider>
       <ChatProvider>
         {children}
+        <IncomingCallModal />
+        <ActiveCallBar />
         <Toaster
           position="top-center"
           containerClassName="!top-4 sm:!top-6"
@@ -40,6 +46,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           }}
         />
       </ChatProvider>
+      </CallProvider>
     </AuthProvider>
     </QueryProvider>
   );

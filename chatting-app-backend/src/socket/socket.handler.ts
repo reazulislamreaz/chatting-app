@@ -4,6 +4,7 @@ import { messageService } from "../modules/message/message.service";
 import { presenceService } from "../services/presence.service";
 import { setSocketServer, emitReceiveMessage } from "./message.events";
 import { createEventRateLimiter } from "./rateLimit";
+import { setupCallHandlers } from "./call.handler";
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -94,6 +95,8 @@ export function setupSocket(io: Server): void {
         isTyping: data.isTyping,
       });
     });
+
+    setupCallHandlers(io, socket);
 
     socket.on("disconnect", async () => {
       await presenceService.markOffline(userId);

@@ -1,12 +1,18 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { CALL_LOG_STATUS, type CallLogStatus } from "../../constants/call";
+
+export type MessageType = "text" | "call";
 
 export interface IMessage extends Document {
   senderId: mongoose.Types.ObjectId;
   receiverId: mongoose.Types.ObjectId;
+  messageType: MessageType;
   content: string;
   imageUrl: string;
   voiceUrl: string;
   voiceDuration: number;
+  callStatus?: CallLogStatus;
+  callDuration: number;
   read: boolean;
   readAt?: Date;
   isDeleted: boolean;
@@ -19,7 +25,10 @@ const messageSchema = new Schema<IMessage>(
   {
     senderId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     receiverId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    messageType: { type: String, enum: ["text", "call"], default: "text" },
     content: { type: String, default: "", trim: true, maxlength: 5000 },
+    callStatus: { type: String, enum: CALL_LOG_STATUS },
+    callDuration: { type: Number, default: 0, min: 0 },
     imageUrl: { type: String, default: "" },
     voiceUrl: { type: String, default: "" },
     voiceDuration: { type: Number, default: 0, min: 0, max: 60 },

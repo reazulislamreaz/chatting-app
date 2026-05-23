@@ -35,6 +35,12 @@ const envSchema = z.object({
     .transform((v) => v !== "false" && v !== "0"),
   MONGODB_MAX_POOL_SIZE: z.coerce.number().default(50),
   MONGODB_MIN_POOL_SIZE: z.coerce.number().default(5),
+  ZEGOCLOUD_APP_ID: z.string().default("0"),
+  ZEGOCLOUD_APP_SIGN: z.string().default(""),
+  ZEGOCLOUD_SERVER_SECRET: z.string().default(""),
+  ZEGOCLOUD_SERVER_URL: z
+    .string()
+    .default("wss://webliveroom-api.zego.im/ws"),
 });
 
 const parsed = envSchema.safeParse(process.env);

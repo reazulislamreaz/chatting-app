@@ -67,16 +67,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               ...chat,
               lastMessage: {
                 id: message.id,
+                messageType: message.messageType,
                 content: message.content,
                 imageUrl: message.imageUrl,
                 voiceUrl: message.voiceUrl,
                 voiceDuration: message.voiceDuration,
+                callStatus: message.callStatus,
+                callDuration: message.callDuration,
                 isDeleted: message.isDeleted,
                 senderId: message.senderId,
                 createdAt: message.createdAt,
                 read: message.read,
               },
-              unreadCount: isIncoming ? chat.unreadCount + 1 : chat.unreadCount,
+              unreadCount:
+                isIncoming && message.messageType !== "call"
+                  ? chat.unreadCount + 1
+                  : chat.unreadCount,
             };
           })
           .sort((a, b) => {

@@ -13,26 +13,33 @@ import { cache } from "../../cache/cache.service";
 import { cacheInvalidate } from "../../cache/invalidate";
 import { keys, TTL } from "../../cache/keys";
 import { MAX_VOICE_DURATION_SECONDS } from "../../constants/limits";
+import type { CallLogStatus } from "../../constants/call";
+import { emitReceiveMessage } from "../../socket/message.events";
 
 function formatMessage(message: {
   _id: { toString(): string };
   senderId: { toString(): string };
   receiverId: { toString(): string };
+  messageType?: string;
   content?: string;
   imageUrl?: string;
   voiceUrl?: string;
   voiceDuration?: number;
+  callStatus?: CallLogStatus;
+  callDuration?: number;
   read: boolean;
   isDeleted?: boolean;
   editedAt?: Date;
   createdAt: Date;
 }): MessagePayload {
   const isDeleted = Boolean(message.isDeleted);
+  const isCall = message.messageType === "call";
 
   return {
     id: message._id.toString(),
     senderId: message.senderId.toString(),
     receiverId: message.receiverId.toString(),
+    messageType: isCall ? "call" : "text",
     content: isDeleted ? "" : message.content || "",
     imageUrl: isDeleted
       ? undefined
@@ -45,6 +52,8 @@ function formatMessage(message: {
         ? resolveImageUrl(message.voiceUrl)
         : undefined,
     voiceDuration: isDeleted ? undefined : message.voiceDuration || undefined,
+    callStatus: isCall && !isDeleted ? message.callStatus : undefined,
+    callDuration: isCall && !isDeleted ? message.callDuration ?? 0 : undefined,
     read: message.read,
     isDeleted,
     editedAt: message.editedAt,
@@ -56,6 +65,9 @@ async function getOwnedMessage(messageId: string, userId: string) {
   const message = await Message.findById(messageId);
   if (!message) {
     throw new AppError(404, "Message not found");
+  }
+  if (message.messageType === "call") {
+    throw new AppError(400, "Call history cannot be edited");
   }
   if (message.senderId.toString() !== userId) {
     throw new AppError(403, "Not authorized to modify this message");
@@ -114,6 +126,7 @@ export class MessageService {
     const message = await Message.create({
       senderId,
       receiverId,
+      messageType: "text",
       content: trimmedContent,
       imageUrl,
       voiceUrl,
@@ -272,7 +285,36 @@ export class MessageService {
       receiverId: userId,
       read: false,
       isDeleted: false,
+      messageType: { $ne: "call" },
     });
+  }
+
+  async createCallLogMessage(
+    callerId: string,
+    calleeId: string,
+    callStatus: CallLogStatus,
+    durationSeconds = 0,
+  ): Promise<MessagePayload> {
+    const areFriends = await friendRequestService.areFriends(callerId, calleeId);
+    if (!areFriends) {
+      throw new AppError(403, "You can only call friends");
+    }
+
+    const message = await Message.create({
+      senderId: callerId,
+      receiverId: calleeId,
+      messageType: "call",
+      content: "",
+      callStatus,
+      callDuration: Math.max(0, Math.round(durationSeconds)),
+      read: true,
+    });
+
+    await cacheInvalidate.onNewMessage(callerId, calleeId);
+
+    const payload = formatMessage(message as IMessage);
+    emitReceiveMessage(payload);
+    return payload;
   }
 }
 

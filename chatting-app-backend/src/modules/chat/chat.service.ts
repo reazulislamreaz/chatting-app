@@ -22,17 +22,20 @@ export class ChatService {
     const [lastMessages, unreadCounts] = await Promise.all([
       Message.aggregate<{
         _id: mongoose.Types.ObjectId;
-        lastMessage: {
-          _id: mongoose.Types.ObjectId;
-          content: string;
-          imageUrl?: string;
-          voiceUrl?: string;
-          voiceDuration?: number;
-          isDeleted?: boolean;
-          senderId: mongoose.Types.ObjectId;
-          createdAt: Date;
-          read: boolean;
-        };
+          lastMessage: {
+            _id: mongoose.Types.ObjectId;
+            messageType?: string;
+            content: string;
+            imageUrl?: string;
+            voiceUrl?: string;
+            voiceDuration?: number;
+            callStatus?: string;
+            callDuration?: number;
+            isDeleted?: boolean;
+            senderId: mongoose.Types.ObjectId;
+            createdAt: Date;
+            read: boolean;
+          };
       }>([
         {
           $match: {
@@ -65,10 +68,13 @@ export class ChatService {
             _id: 1,
             lastMessage: {
               _id: "$lastMessage._id",
+              messageType: "$lastMessage.messageType",
               content: "$lastMessage.content",
               imageUrl: "$lastMessage.imageUrl",
               voiceUrl: "$lastMessage.voiceUrl",
               voiceDuration: "$lastMessage.voiceDuration",
+              callStatus: "$lastMessage.callStatus",
+              callDuration: "$lastMessage.callDuration",
               isDeleted: "$lastMessage.isDeleted",
               senderId: "$lastMessage.senderId",
               createdAt: "$lastMessage.createdAt",
@@ -104,10 +110,13 @@ export class ChatService {
           lastMessage: last
             ? {
                 id: last._id.toString(),
+                messageType: last.messageType === "call" ? "call" : "text",
                 content: last.content || "",
                 imageUrl: last.imageUrl ? resolveImageUrl(last.imageUrl) : undefined,
                 voiceUrl: last.voiceUrl ? resolveImageUrl(last.voiceUrl) : undefined,
                 voiceDuration: last.voiceDuration || undefined,
+                callStatus: last.callStatus,
+                callDuration: last.callDuration,
                 isDeleted: Boolean(last.isDeleted),
                 senderId: last.senderId.toString(),
                 createdAt: last.createdAt,

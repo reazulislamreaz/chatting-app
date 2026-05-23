@@ -62,7 +62,11 @@ export default function ChatListPage() {
             <div className="divide-y divide-surface-border animate-fade-in">
               {chatList.map((chat) => {
                 const isOwnLast = chat.lastMessage?.senderId === user?.id;
-                const preview = getMessagePreview(chat.lastMessage, isOwnLast);
+                const preview = getMessagePreview(
+                  chat.lastMessage,
+                  isOwnLast,
+                  user?.id,
+                );
 
                 return (
                   <PrefetchLink

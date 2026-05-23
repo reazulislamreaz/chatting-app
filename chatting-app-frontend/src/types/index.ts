@@ -39,14 +39,25 @@ export interface FriendRequest {
   createdAt: string;
 }
 
+export type CallLogStatus =
+  | "completed"
+  | "rejected"
+  | "cancelled"
+  | "missed"
+  | "busy"
+  | "disconnected";
+
 export interface Message {
   id: string;
   senderId: string;
   receiverId: string;
+  messageType?: "text" | "call";
   content: string;
   imageUrl?: string;
   voiceUrl?: string;
   voiceDuration?: number;
+  callStatus?: CallLogStatus;
+  callDuration?: number;
   read: boolean;
   readAt?: string;
   isDeleted?: boolean;
@@ -58,10 +69,13 @@ export interface ChatListItem {
   user: User;
   lastMessage: {
     id: string;
+    messageType?: "text" | "call";
     content: string;
     imageUrl?: string;
     voiceUrl?: string;
     voiceDuration?: number;
+    callStatus?: CallLogStatus;
+    callDuration?: number;
     isDeleted?: boolean;
     senderId: string;
     createdAt: string;

@@ -19,12 +19,14 @@ import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 import type { Message, ApiResponse, ChatListItem } from "@/types";
 import { toastError, toastSuccess } from "@/lib/toast";
+import { useCall } from "@/context/CallContext";
 
 export default function ChatPage() {
   const params = useParams();
   const otherUserId = params.userId as string;
   const { user } = useAuth();
   const { refreshChatList, typingUsers } = useChat();
+  const { startCall, phase: callPhase } = useCall();
   const queryClient = useQueryClient();
 
   const { data: otherUser, isPending: userPending } = useUserQuery(otherUserId);
@@ -315,6 +317,30 @@ export default function ChatPage() {
                   )}
                 </p>
               </div>
+              {otherUser && (
+                <button
+                  type="button"
+                  onClick={() => startCall(otherUserId, otherUser.name)}
+                  disabled={callPhase !== "idle"}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10 disabled:opacity-40"
+                  aria-label="Voice call"
+                  title="Voice call"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"
+                    />
+                  </svg>
+                </button>
+              )}
             </>
           ) : headerLoading ? (
             <div className="flex min-w-0 flex-1 items-center gap-3">

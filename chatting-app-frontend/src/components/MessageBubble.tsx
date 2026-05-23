@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { getUploadUrl } from "@/lib/api";
 import { VoiceMessagePlayer } from "@/components/VoiceMessagePlayer";
+import { CallLogBubble } from "@/components/CallLogBubble";
 import type { Message } from "@/types";
 
 interface MessageBubbleProps {
@@ -29,6 +30,17 @@ export function MessageBubble({ message, isOwn, onEdit, onDelete }: MessageBubbl
           This message was deleted
         </div>
       </div>
+    );
+  }
+
+  if (message.messageType === "call" && message.callStatus) {
+    return (
+      <CallLogBubble
+        callStatus={message.callStatus}
+        callDuration={message.callDuration ?? 0}
+        isCaller={isOwn}
+        createdAt={message.createdAt}
+      />
     );
   }
 

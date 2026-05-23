@@ -1,13 +1,19 @@
 import { Server } from "socket.io";
 
+import type { CallLogStatus } from "../constants/call";
+import type { MessageType } from "../modules/message/message.model";
+
 export interface MessagePayload {
   id: string;
   senderId: string;
   receiverId: string;
+  messageType?: MessageType;
   content: string;
   imageUrl?: string;
   voiceUrl?: string;
   voiceDuration?: number;
+  callStatus?: CallLogStatus;
+  callDuration?: number;
   read: boolean;
   isDeleted?: boolean;
   editedAt?: Date;
