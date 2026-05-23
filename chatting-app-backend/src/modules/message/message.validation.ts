@@ -1,9 +1,15 @@
 import { z } from "zod";
+import { MAX_VOICE_DURATION_SECONDS } from "../../constants/limits";
 
 export const sendMessageSchema = z.object({
   receiverId: z.string().regex(/^[a-f\d]{24}$/i, "Invalid user ID"),
   content: z.string().max(5000).trim().optional().default(""),
-  voiceDuration: z.coerce.number().min(0).max(600).optional().default(0),
+  voiceDuration: z.coerce
+    .number()
+    .min(0)
+    .max(MAX_VOICE_DURATION_SECONDS)
+    .optional()
+    .default(0),
 });
 
 export const updateMessageSchema = z.object({

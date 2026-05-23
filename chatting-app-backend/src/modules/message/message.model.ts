@@ -22,7 +22,7 @@ const messageSchema = new Schema<IMessage>(
     content: { type: String, default: "", trim: true, maxlength: 5000 },
     imageUrl: { type: String, default: "" },
     voiceUrl: { type: String, default: "" },
-    voiceDuration: { type: Number, default: 0, min: 0 },
+    voiceDuration: { type: Number, default: 0, min: 0, max: 60 },
     read: { type: Boolean, default: false },
     readAt: { type: Date },
     isDeleted: { type: Boolean, default: false },

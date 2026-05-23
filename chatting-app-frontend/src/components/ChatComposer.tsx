@@ -1,7 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { toastError } from "@/lib/toast";
+import {
+  MAX_VOICE_DURATION_SECONDS,
+  formatVoiceLimitLabel,
+} from "@/lib/voiceLimits";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 interface ChatComposerProps {
   onSendText: (content: string) => void;
@@ -45,6 +49,7 @@ export function ChatComposer({
   const chunksRef = useRef<Blob[]>([]);
   const recordingStartedAtRef = useRef<number>(0);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoStoppedAtLimitRef = useRef(false);
 
   const clearImage = () => {
     setImage(null);
@@ -82,7 +87,14 @@ export function ChatComposer({
     setPreview(URL.createObjectURL(file));
   };
 
+  const finishRecording = () => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
   const cancelRecording = () => {
+    autoStoppedAtLimitRef.current = false;
     stopRecordingTimer();
     chunksRef.current = [];
     if (mediaRecorderRef.current?.state === "recording") {
@@ -114,6 +126,7 @@ export function ChatComposer({
 
       mediaRecorderRef.current = recorder;
       recordingStartedAtRef.current = Date.now();
+      autoStoppedAtLimitRef.current = false;
       setRecordingSeconds(0);
       setRecording(true);
 
@@ -121,7 +134,17 @@ export function ChatComposer({
         const elapsed = Math.floor(
           (Date.now() - recordingStartedAtRef.current) / 1000,
         );
-        setRecordingSeconds(elapsed);
+        const capped = Math.min(elapsed, MAX_VOICE_DURATION_SECONDS);
+        setRecordingSeconds(capped);
+
+        if (elapsed >= MAX_VOICE_DURATION_SECONDS) {
+          stopRecordingTimer();
+          if (!autoStoppedAtLimitRef.current) {
+            autoStoppedAtLimitRef.current = true;
+            toastSuccess("1 minute limit reached — sending voice message");
+          }
+          finishRecording();
+        }
       }, 200);
 
       recorder.ondataavailable = (event) => {
@@ -132,9 +155,12 @@ export function ChatComposer({
         stopRecordingTimer();
         stopMediaStream();
 
-        const duration = Math.max(
-          1,
-          Math.round((Date.now() - recordingStartedAtRef.current) / 1000),
+        const rawDuration = Math.round(
+          (Date.now() - recordingStartedAtRef.current) / 1000,
+        );
+        const duration = Math.min(
+          MAX_VOICE_DURATION_SECONDS,
+          Math.max(1, rawDuration),
         );
         const blob = new Blob(chunksRef.current, {
           type: recorder.mimeType || "audio/webm",
@@ -170,13 +196,11 @@ export function ChatComposer({
     }
   };
 
-  const finishRecording = () => {
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop();
-    }
-  };
-
   const canSendText = !sending && !recording && !image && content.trim().length > 0;
+
+  const recordingProgress =
+    (recordingSeconds / MAX_VOICE_DURATION_SECONDS) * 100;
+  const nearLimit = recordingSeconds >= MAX_VOICE_DURATION_SECONDS - 10;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -231,10 +255,25 @@ export function ChatComposer({
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
               <span className="relative inline-flex h-3 w-3 rounded-full bg-rose-500" />
             </span>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-rose-700">Recording voice…</p>
-              <p className="text-xs text-rose-500">
-                {formatRecordingTime(recordingSeconds)}
+              <p
+                className={`text-xs font-medium tabular-nums ${
+                  nearLimit ? "text-rose-600" : "text-rose-500"
+                }`}
+              >
+                {formatRecordingTime(recordingSeconds)} / {formatVoiceLimitLabel()}
+              </p>
+              <div className="mt-2 h-1 overflow-hidden rounded-full bg-rose-200">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    nearLimit ? "bg-rose-600" : "bg-rose-400"
+                  }`}
+                  style={{ width: `${Math.min(recordingProgress, 100)}%` }}
+                />
+              </div>
+              <p className="mt-1 text-[10px] text-rose-400">
+                Max {MAX_VOICE_DURATION_SECONDS} seconds per message
               </p>
             </div>
           </div>
@@ -290,7 +329,11 @@ export function ChatComposer({
               ? "bg-rose-500 text-white hover:bg-rose-600"
               : "text-slate-600 hover:bg-white/80"
           }`}
-          aria-label={recording ? "Stop and send voice message" : "Record voice message"}
+          aria-label={
+            recording
+              ? "Stop and send voice message"
+              : "Record voice message (max 1 minute)"
+          }
         >
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path

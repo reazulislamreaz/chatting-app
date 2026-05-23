@@ -12,6 +12,7 @@ import type { MessagePayload } from "../../socket/message.events";
 import { cache } from "../../cache/cache.service";
 import { cacheInvalidate } from "../../cache/invalidate";
 import { keys, TTL } from "../../cache/keys";
+import { MAX_VOICE_DURATION_SECONDS } from "../../constants/limits";
 
 function formatMessage(message: {
   _id: { toString(): string };
@@ -97,8 +98,17 @@ export class MessageService {
     }
 
     if (voiceFile) {
-      voiceUrl = await uploadAudioToS3(voiceFile, "messages");
       duration = Math.max(0, Math.round(voiceDuration));
+      if (duration < 1) {
+        throw new AppError(400, "Voice message is too short");
+      }
+      if (duration > MAX_VOICE_DURATION_SECONDS) {
+        throw new AppError(
+          400,
+          `Voice messages cannot be longer than ${MAX_VOICE_DURATION_SECONDS} seconds`
+        );
+      }
+      voiceUrl = await uploadAudioToS3(voiceFile, "messages");
     }
 
     const message = await Message.create({
