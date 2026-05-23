@@ -98,7 +98,7 @@ export default function SettingsPage() {
           }
         />
         <div className="page-content">
-          <div className="page-container mx-auto max-w-2xl animate-fade-in space-y-4 sm:space-y-6">
+          <div className="content-narrow animate-fade-in space-y-4 sm:space-y-6">
             <form onSubmit={handlePasswordSubmit} className="card space-y-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">

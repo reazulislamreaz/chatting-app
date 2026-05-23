@@ -97,7 +97,7 @@ export default function UserDetailPage() {
           {isPending && !profile ? (
             <ProfileSkeleton />
           ) : !profile ? null : (
-            <div className="page-container mx-auto max-w-lg animate-fade-in space-y-4 pb-6">
+            <div className="content-profile animate-fade-in space-y-4 pb-6">
               <div className="card flex flex-col items-center text-center">
                 <Avatar
                   name={profile.name}

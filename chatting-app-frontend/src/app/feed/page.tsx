@@ -105,7 +105,7 @@ export default function FeedPage() {
           refreshing={isFetching && !isPending}
         />
         <div className="page-content">
-          <div className="page-container mx-auto max-w-2xl space-y-4 sm:space-y-6">
+          <div className="content-feed space-y-4 sm:space-y-6">
             <CreatePost onPostCreated={handlePostCreated} />
 
             {isPending ? (

@@ -23,7 +23,7 @@ export function PageHeader({
           : "page-header"
       }
     >
-      <div className="page-container flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="page-container flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:gap-4">
         <div className="min-w-0">
           <h1
             className={`flex items-center gap-2 truncate text-lg font-bold tracking-tight sm:text-xl md:text-2xl ${
@@ -46,7 +46,11 @@ export function PageHeader({
             </p>
           )}
         </div>
-        {action && <div className="shrink-0">{action}</div>}
+        {action && (
+          <div className="shrink-0 [&_.tab-pills]:w-full sm:[&_.tab-pills]:w-auto">
+            {action}
+          </div>
+        )}
       </div>
     </div>
   );

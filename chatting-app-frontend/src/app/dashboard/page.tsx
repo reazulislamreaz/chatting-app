@@ -115,15 +115,16 @@ export default function DashboardPage() {
           {fetching && !profile ? (
             <DashboardSkeleton />
           ) : (
-            <div className="page-container mx-auto max-w-2xl animate-fade-in space-y-4 sm:space-y-6">
-              <div className="card flex flex-col items-center text-center sm:flex-row sm:text-left">
+            <div className="page-container animate-fade-in space-y-4 sm:space-y-6 lg:max-w-5xl">
+              <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,280px)_1fr] lg:items-start xl:grid-cols-[minmax(0,320px)_1fr]">
+              <div className="card flex flex-col items-center text-center sm:flex-row sm:text-left lg:flex-col lg:items-center lg:text-center">
                 <Avatar
                   name={profile?.name || user?.name || "U"}
                   src={profile?.profilePicture || user?.profilePicture}
                   size="xl"
                 />
-                <div className="mt-4 sm:ml-6 sm:mt-0">
-                  <h2 className="text-xl font-bold text-slate-900">
+                <div className="mt-4 sm:ml-6 sm:mt-0 lg:ml-0 lg:mt-4">
+                  <h2 className="text-xl font-bold text-slate-900 lg:text-2xl">
                     {profile?.name || user?.name}
                   </h2>
                   <p className="text-sm text-slate-500">{email}</p>
@@ -135,7 +136,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <form onSubmit={handleProfileSubmit} className="card space-y-5">
+              <form onSubmit={handleProfileSubmit} className="card space-y-5 lg:space-y-6">
                 <h3 className="text-base font-semibold text-slate-900">
                   Profile details
                 </h3>
@@ -196,7 +197,7 @@ export default function DashboardPage() {
                   />
                 </div>
 
-                <div className="grid gap-5 sm:grid-cols-2">
+                <div className="grid gap-5 md:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">
                       Profession
@@ -269,8 +270,9 @@ export default function DashboardPage() {
                   {loading ? "Saving..." : "Save profile"}
                 </button>
               </form>
+              </div>
 
-              <div className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:max-w-5xl">
                 <div>
                   <h3 className="text-base font-semibold text-slate-900">
                     Password & account

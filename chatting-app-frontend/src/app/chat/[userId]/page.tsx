@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { AppLayout } from "@/components/AppLayout";
 import { Avatar } from "@/components/Avatar";
 import { MessageListSkeleton } from "@/components/skeletons";
 import { Skeleton } from "@/components/skeletons/Skeleton";
@@ -283,12 +282,11 @@ export default function ChatPage() {
   const isTyping = typingUsers[otherUserId];
 
   return (
-    <AppLayout>
       <div className="flex h-full flex-col">
-        <header className="page-header flex shrink-0 items-center gap-3 !border-brand-700/20 !bg-brand-700 !py-3 !text-white">
+        <header className="page-header flex shrink-0 items-center gap-3 !border-brand-700/20 !bg-brand-700 !py-3 !text-white md:!px-5 lg:!px-6">
           <Link
             href="/chat"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10 lg:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10 md:hidden"
             aria-label="Back to messages"
           >
             <svg
@@ -370,7 +368,7 @@ export default function ChatPage() {
               No messages yet. Say hello!
             </p>
           ) : (
-            <div className="page-container mx-auto flex max-w-2xl animate-fade-in flex-col gap-1.5">
+            <div className="page-container mx-auto flex max-w-2xl animate-fade-in flex-col gap-1.5 lg:max-w-3xl xl:max-w-4xl">
               {messages.map((msg) => (
                 <MessageBubble
                   key={msg.id}
@@ -412,6 +410,5 @@ export default function ChatPage() {
           />
         )}
       </div>
-    </AppLayout>
   );
 }

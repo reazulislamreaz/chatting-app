@@ -135,7 +135,7 @@ export function Sidebar() {
   return (
     <>
       {/* Desktop & tablet sidebar */}
-      <aside className="hidden h-full w-64 shrink-0 flex-col border-r border-surface-border bg-white md:flex lg:w-72">
+      <aside className="hidden h-full w-64 shrink-0 flex-col border-r border-surface-border bg-white md:flex lg:w-72 xl:w-80">
         <div className="border-b border-surface-border bg-brand-700 p-4 text-white lg:p-5">
           <div className="mb-4 flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 text-white">
@@ -143,7 +143,7 @@ export function Sidebar() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
               </svg>
             </div>
-            <span className="text-lg font-bold tracking-tight">ChatFlow</span>
+            <span className="text-lg font-bold tracking-tight lg:text-xl">ChatFlow</span>
           </div>
           <div className="flex items-center gap-3 rounded-xl bg-white/10 p-3">
             <Avatar name={user?.name || "U"} src={user?.profilePicture} size="md" />

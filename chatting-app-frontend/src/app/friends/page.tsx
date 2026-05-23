@@ -76,32 +76,32 @@ export default function FriendsPage() {
           title="Friends"
           subtitle="Manage your connections and requests"
           refreshing={refreshing}
-          action={
-            <div className="flex flex-wrap gap-2">
+        />
+
+        <div className="page-content">
+          <div className="page-container space-y-5 lg:space-y-6">
+            <div className="tab-pills">
               {tabs.map((t) => (
                 <button
                   key={t.key}
                   onClick={() => setTab(t.key)}
-                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                    tab === t.key
-                      ? "bg-brand-500 text-white shadow-sm"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  className={`tab-pill ${
+                    tab === t.key ? "tab-pill-active" : "tab-pill-inactive"
                   }`}
                 >
                   {t.label}
                   {t.count > 0 && (
-                    <span className="ml-1.5 rounded-full bg-white/20 px-1.5 text-xs">
+                    <span
+                      className={`ml-1.5 rounded-full px-1.5 text-xs ${
+                        tab === t.key ? "bg-white/25" : "bg-slate-200/80"
+                      }`}
+                    >
                       {t.count}
                     </span>
                   )}
                 </button>
               ))}
             </div>
-          }
-        />
-
-        <div className="page-content">
-          <div className="page-container">
             {loading ? (
               <FriendRowSkeleton count={4} />
             ) : tab === "friends" ? (
@@ -111,7 +111,7 @@ export default function FriendsPage() {
                   description="Discover people and send friend requests to connect"
                 />
               ) : (
-                <div className="grid animate-fade-in gap-3 sm:grid-cols-2">
+                <div className="grid animate-fade-in gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {friends.map((friend) => (
                     <Link
                       key={friend.id}
