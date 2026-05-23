@@ -225,7 +225,7 @@ export function ChatComposer({
   return (
     <form
       onSubmit={handleSubmit}
-      className="safe-bottom z-20 shrink-0 border-t border-surface-border bg-wa-panel px-2 py-2 sm:px-4"
+      className="composer-bottom z-20 shrink-0 border-t border-surface-border bg-wa-panel px-2 pt-2.5 sm:px-4"
     >
       {preview && (
         <div className="mx-auto mb-2 flex w-full max-w-2xl items-start gap-2 rounded-xl bg-white p-2 shadow-sm sm:max-w-3xl lg:max-w-4xl">

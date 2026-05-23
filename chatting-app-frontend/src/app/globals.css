@@ -97,6 +97,11 @@
     padding-bottom: env(safe-area-inset-bottom, 0);
   }
 
+  /* Lifts the chat composer above the home indicator / browser chrome on mobile */
+  .composer-bottom {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+
   .safe-top {
     padding-top: env(safe-area-inset-top, 0);
   }

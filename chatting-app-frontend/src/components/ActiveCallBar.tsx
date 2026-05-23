@@ -26,7 +26,7 @@ export function ActiveCallBar() {
   const onHangUp = phase === "outgoing" ? cancelCall : endCall;
 
   return (
-    <div className="fixed bottom-20 left-1/2 z-[90] w-[min(100vw-1.5rem,24rem)] -translate-x-1/2 rounded-2xl border border-brand-200 bg-white px-4 py-3 shadow-lg sm:bottom-6">
+    <div className="fixed bottom-[5.25rem] left-1/2 z-[90] w-[min(100vw-1.5rem,24rem)] -translate-x-1/2 rounded-2xl border border-brand-200 bg-white px-4 py-3 shadow-lg sm:bottom-6">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700">
           <svg

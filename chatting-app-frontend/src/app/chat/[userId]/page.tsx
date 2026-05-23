@@ -360,7 +360,7 @@ export default function ChatPage() {
           ) : null}
         </header>
 
-        <div className="wa-chat-bg flex-1 overflow-y-auto px-3 py-3 scrollbar-thin sm:px-4">
+        <div className="wa-chat-bg flex-1 overflow-y-auto scroll-pb-28 px-3 py-3 scrollbar-thin sm:scroll-pb-24 sm:px-4">
           {showMessagesSkeleton ? (
             <MessageListSkeleton count={8} />
           ) : messages.length === 0 ? (
@@ -388,7 +388,7 @@ export default function ChatPage() {
                   }
                 />
               ))}
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="h-3 shrink-0 sm:h-2" />
             </div>
           )}
         </div>
