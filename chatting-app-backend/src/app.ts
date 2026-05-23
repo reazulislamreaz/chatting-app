@@ -19,6 +19,10 @@ import callRoutes from "./modules/call/call.route";
 
 const app = express();
 
+// Required behind Next.js/nginx reverse proxy so rate-limit sees real client IPs
+// (X-Forwarded-For) instead of throwing ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+app.set("trust proxy", 1);
+
 app.use(
   cors({
     origin: corsOriginValidator,

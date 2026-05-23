@@ -5,7 +5,7 @@ import { presenceService } from "../services/presence.service";
 import { broadcastPresenceToFriends } from "../services/presence.broadcast";
 import { setSocketServer, emitReceiveMessage } from "./message.events";
 import { createEventRateLimiter } from "./rateLimit";
-import { setupCallHandlers } from "./call.handler";
+import { clearCallDisconnectGrace, setupCallHandlers } from "./call.handler";
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -35,6 +35,7 @@ export function setupSocket(io: Server): void {
 
   io.on("connection", async (socket: AuthenticatedSocket) => {
     const userId = socket.userId!;
+    clearCallDisconnectGrace(userId);
     socket.join(`user:${userId}`);
 
     const limitSend = createEventRateLimiter(60, 60_000);

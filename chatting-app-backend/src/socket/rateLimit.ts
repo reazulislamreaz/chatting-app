@@ -6,7 +6,7 @@ export function createEventRateLimiter(maxEvents: number, windowMs: number) {
   let windowStart = Date.now();
 
   return (): boolean => {
-    const now = Date.now();
+  const now = Date.now();
     if (now - windowStart >= windowMs) {
       windowStart = now;
       count = 0;

@@ -3,7 +3,7 @@ import rateLimit from "express-rate-limit";
 /** Global API rate limit — per IP */
 export const apiRateLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 300,
+  max: 300000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: "Too many requests. Try again later." },
@@ -12,8 +12,11 @@ export const apiRateLimiter = rateLimit({
 /** Stricter limit for auth endpoints */
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 3000,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: "Too many auth attempts. Try again later." },
+  message: {
+    success: false,
+    message: "Too many auth attempts. Try again later.",
+  },
 });

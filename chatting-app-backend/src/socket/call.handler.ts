@@ -18,7 +18,18 @@ interface AuthenticatedSocket extends Socket {
 }
 
 const CALL_RING_TIMEOUT_MS = 45_000;
+/** Allow socket reconnect before ending an active call (mobile tab/network blips). */
+const CALL_DISCONNECT_GRACE_MS = 15_000;
 const ringTimeouts = new Map<string, NodeJS.Timeout>();
+const disconnectGraceTimers = new Map<string, NodeJS.Timeout>();
+
+export function clearCallDisconnectGrace(userId: string): void {
+  const timer = disconnectGraceTimers.get(userId);
+  if (timer) {
+    clearTimeout(timer);
+    disconnectGraceTimers.delete(userId);
+  }
+}
 
 function clearRingTimeout(callId: string): void {
   const t = ringTimeouts.get(callId);
@@ -217,13 +228,28 @@ export function setupCallHandlers(io: Server, socket: AuthenticatedSocket): void
   });
 
   socket.on("disconnect", () => {
+    clearCallDisconnectGrace(userId);
+
     const activeCallId = getUserActiveCallId(userId);
     if (!activeCallId) return;
 
     const call = getCall(activeCallId);
     if (!call) return;
 
-    const reason = call.status === "active" ? "disconnected" : "cancelled";
-    void finalizeCall(io, call.callId, reason);
+    if (call.status === "ringing") {
+      const reason = call.callerId === userId ? "cancelled" : "missed";
+      void finalizeCall(io, call.callId, reason);
+      return;
+    }
+
+    if (call.status === "active") {
+      const graceTimer = setTimeout(() => {
+        disconnectGraceTimers.delete(userId);
+        const current = getCall(activeCallId);
+        if (!current || current.status !== "active") return;
+        void finalizeCall(io, activeCallId, "disconnected");
+      }, CALL_DISCONNECT_GRACE_MS);
+      disconnectGraceTimers.set(userId, graceTimer);
+    }
   });
 }

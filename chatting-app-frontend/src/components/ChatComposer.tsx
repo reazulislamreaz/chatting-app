@@ -10,7 +10,11 @@ import { toastError, toastSuccess } from "@/lib/toast";
 interface ChatComposerProps {
   onSendText: (content: string) => void;
   onSendImage: (file: File, caption: string) => Promise<void>;
-  onSendVoice: (file: File, durationSeconds: number, caption: string) => Promise<void>;
+  onSendVoice: (
+    file: File,
+    durationSeconds: number,
+    caption: string,
+  ) => Promise<void>;
   onInputChange?: (value: string) => void;
   sending?: boolean;
 }
@@ -235,7 +239,9 @@ export function ChatComposer({
             className="h-14 w-14 rounded-lg object-cover sm:h-16 sm:w-16"
           />
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-slate-600">Image ready to send</p>
+            <p className="text-xs font-medium text-slate-600">
+              Image ready to send
+            </p>
             <p className="truncate text-xs text-slate-400">{image?.name}</p>
           </div>
           <button
@@ -244,8 +250,18 @@ export function ChatComposer({
             className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100"
             aria-label="Remove image"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -259,13 +275,16 @@ export function ChatComposer({
               <span className="relative inline-flex h-3 w-3 rounded-full bg-rose-500" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-rose-700">Recording voice…</p>
+              <p className="text-sm font-medium text-rose-700">
+                Recording voice…
+              </p>
               <p
                 className={`text-xs font-medium tabular-nums ${
                   nearLimit ? "text-rose-600" : "text-rose-500"
                 }`}
               >
-                {formatRecordingTime(recordingSeconds)} / {formatVoiceLimitLabel()}
+                {formatRecordingTime(recordingSeconds)} /{" "}
+                {formatVoiceLimitLabel()}
               </p>
               <div className="mt-2 h-1 overflow-hidden rounded-full bg-rose-200">
                 <div
