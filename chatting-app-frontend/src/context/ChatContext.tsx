@@ -91,8 +91,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       });
     };
 
-    const onMessagesRead = () => {
-      void invalidateChats(queryClient);
+    const onMessagesRead = (data: { readerId: string }) => {
+      queryClient.setQueryData<ChatListItem[]>(queryKeys.chats, (prev) => {
+        if (!prev) return prev;
+        return prev.map((chat) =>
+          chat.user.id === data.readerId && chat.lastMessage
+            ? {
+                ...chat,
+                lastMessage: { ...chat.lastMessage, read: true },
+              }
+            : chat,
+        );
+      });
     };
 
     const onTyping = (data: { userId: string; isTyping: boolean }) => {

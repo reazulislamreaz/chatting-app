@@ -8,6 +8,7 @@ import { isRedisEnabled } from "./config/redis";
 import { corsOriginValidator } from "./config/cors";
 import { errorHandler } from "./middleware/errorHandler";
 import { notFoundHandler } from "./middleware/notFoundHandler";
+import { apiRateLimiter, authRateLimiter } from "./middleware/rateLimit.middleware";
 import authRoutes from "./modules/auth/auth.route";
 import userRoutes from "./modules/user/user.route";
 import friendRequestRoutes from "./modules/friendRequest/friendRequest.route";
@@ -25,6 +26,7 @@ app.use(
 );
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
+app.use("/api", apiRateLimiter);
 app.use("/uploads", express.static(path.resolve(process.cwd(), env.UPLOAD_DIR)));
 
 app.get("/health", async (_req, res) => {
@@ -36,7 +38,7 @@ app.get("/health", async (_req, res) => {
   });
 });
 
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authRateLimiter, authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/friend-requests", friendRequestRoutes);
 app.use("/api/messages", messageRoutes);

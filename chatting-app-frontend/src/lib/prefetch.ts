@@ -21,7 +21,7 @@ export function prefetchMessages(qc: QueryClient, otherUserId: string) {
     queryKey: queryKeys.messages(otherUserId),
     queryFn: async () => {
       const res = await api<ApiResponse<{ messages: Message[] }>>(
-        `/messages/${otherUserId}?limit=100`,
+        `/messages/${otherUserId}?limit=30`,
       );
       return res.data.messages;
     },

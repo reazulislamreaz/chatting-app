@@ -1,8 +1,9 @@
 import { Server, Socket } from "socket.io";
 import { verifyToken } from "../utils/jwt";
 import { messageService } from "../modules/message/message.service";
-import { userService } from "../modules/user/user.service";
+import { presenceService } from "../services/presence.service";
 import { setSocketServer, emitReceiveMessage } from "./message.events";
+import { createEventRateLimiter } from "./rateLimit";
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -33,34 +34,47 @@ export function setupSocket(io: Server): void {
   io.on("connection", async (socket: AuthenticatedSocket) => {
     const userId = socket.userId!;
     socket.join(`user:${userId}`);
-    await userService.setOnlineStatus(userId, true);
-    io.emit("user_online", { userId });
+
+    const limitSend = createEventRateLimiter(60, 60_000);
+    const limitTyping = createEventRateLimiter(30, 60_000);
+    const limitRead = createEventRateLimiter(120, 60_000);
+
+    await presenceService.markOnline(userId);
 
     socket.on(
       "send_message",
       async (data: { receiverId: string; content: string }, callback) => {
-      try {
-        const message = await messageService.sendMessage(
-          userId,
-          data.receiverId,
-          data.content
-        );
-
-        emitReceiveMessage(message);
-
-        if (typeof callback === "function") {
-          callback({ success: true, data: message });
+        if (!limitSend()) {
+          if (typeof callback === "function") {
+            callback({ success: false, message: "Rate limit exceeded. Slow down." });
+          }
+          return;
         }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to send message";
-        if (typeof callback === "function") {
-          callback({ success: false, message });
+
+        try {
+          const message = await messageService.sendMessage(
+            userId,
+            data.receiverId,
+            data.content,
+          );
+
+          emitReceiveMessage(message);
+
+          if (typeof callback === "function") {
+            callback({ success: true, data: message });
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Failed to send message";
+          if (typeof callback === "function") {
+            callback({ success: false, message });
+          }
         }
-      }
-    }
+      },
     );
 
     socket.on("message_read", async (data: { senderId: string }) => {
+      if (!limitRead()) return;
+
       try {
         const result = await messageService.markAsRead(userId, data.senderId);
         io.to(`user:${data.senderId}`).emit("messages_read", {
@@ -73,6 +87,8 @@ export function setupSocket(io: Server): void {
     });
 
     socket.on("typing", (data: { receiverId: string; isTyping: boolean }) => {
+      if (!limitTyping()) return;
+
       io.to(`user:${data.receiverId}`).emit("typing", {
         userId,
         isTyping: data.isTyping,
@@ -80,8 +96,7 @@ export function setupSocket(io: Server): void {
     });
 
     socket.on("disconnect", async () => {
-      await userService.setOnlineStatus(userId, false);
-      io.emit("user_offline", { userId, lastSeen: new Date() });
+      await presenceService.markOffline(userId);
     });
   });
 }

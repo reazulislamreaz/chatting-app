@@ -17,7 +17,7 @@ import { useMessagesQuery, useUserQuery } from "@/hooks/queries";
 import { getSocket } from "@/lib/socket";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
-import type { Message, ApiResponse } from "@/types";
+import type { Message, ApiResponse, ChatListItem } from "@/types";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 export default function ChatPage() {
@@ -41,6 +41,16 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const markedReadRef = useRef(false);
+
+  const markConversationRead = useCallback(() => {
+    getSocket().emit("message_read", { senderId: otherUserId });
+    queryClient.setQueryData<ChatListItem[]>(queryKeys.chats, (prev) => {
+      if (!prev) return prev;
+      return prev.map((c) =>
+        c.user.id === otherUserId ? { ...c, unreadCount: 0 } : c,
+      );
+    });
+  }, [otherUserId, queryClient]);
 
   const showMessagesSkeleton = messagesPending && messages.length === 0;
   const headerLoading = userPending && !otherUser;
@@ -93,15 +103,8 @@ export default function ChatPage() {
     if (!messagesReady || !user || markedReadRef.current) return;
     markedReadRef.current = true;
 
-    const socket = getSocket();
-    socket.emit("message_read", { senderId: otherUserId });
-    api("/messages/read", {
-      method: "PATCH",
-      body: JSON.stringify({ senderId: otherUserId }),
-    })
-      .then(() => refreshChatList())
-      .catch(() => {});
-  }, [messagesReady, user, otherUserId, refreshChatList]);
+    markConversationRead();
+  }, [messagesReady, user, markConversationRead]);
 
   useEffect(() => {
     scrollToBottom();
@@ -120,11 +123,7 @@ export default function ChatPage() {
         appendMessage(message);
 
         if (message.senderId === otherUserId) {
-          socket.emit("message_read", { senderId: otherUserId });
-          api("/messages/read", {
-            method: "PATCH",
-            body: JSON.stringify({ senderId: otherUserId }),
-          }).catch(() => {});
+          markConversationRead();
         }
       }
     };
@@ -157,7 +156,7 @@ export default function ChatPage() {
       socket.off("message_updated", onMessageUpdated);
       socket.off("message_deleted", onMessageDeleted);
     };
-  }, [user, otherUserId, appendMessage, replaceMessage, refreshChatList]);
+  }, [user, otherUserId, appendMessage, replaceMessage, markConversationRead, refreshChatList]);
 
   const emitTyping = (isTyping: boolean) => {
     getSocket().emit("typing", { receiverId: otherUserId, isTyping });

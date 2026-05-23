@@ -6,6 +6,7 @@ import { connectRedis, disconnectRedis } from "./config/redis";
 import { env } from "./config/env";
 import { allowedOrigins } from "./config/cors";
 import { setupSocket } from "./socket/socket.handler";
+import { attachSocketRedisAdapter, disconnectSocketRedis } from "./config/socketAdapter";
 
 async function bootstrap() {
   await connectDatabase();
@@ -18,8 +19,11 @@ async function bootstrap() {
       origin: allowedOrigins,
       credentials: true,
     },
+    pingInterval: 25_000,
+    pingTimeout: 20_000,
   });
 
+  await attachSocketRedisAdapter(io);
   setupSocket(io);
 
   server.listen(env.PORT, () => {
@@ -27,6 +31,7 @@ async function bootstrap() {
   });
 
   const shutdown = async () => {
+    await disconnectSocketRedis();
     await disconnectRedis();
     process.exit(0);
   };

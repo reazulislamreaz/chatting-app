@@ -1,18 +1,18 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardSkeleton } from "@/components/skeletons";
-import { api, clearToken } from "@/lib/api";
+import { api } from "@/lib/api";
 import { invalidateProfile } from "@/lib/invalidateCache";
 import { useProfileQuery } from "@/hooks/queries";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
-import type { User, ApiResponse } from "@/types";
+import type { User } from "@/types";
 import { RELATION_STATUS_OPTIONS } from "@/lib/relationStatus";
 
 function applyProfileToForm(profile: User, setters: {
@@ -35,7 +35,6 @@ function applyProfileToForm(profile: User, setters: {
 
 export default function DashboardPage() {
   const { user, refreshUser } = useAuth();
-  const router = useRouter();
   const queryClient = useQueryClient();
   const {
     data: profile,
@@ -53,12 +52,6 @@ export default function DashboardPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [formSynced, setFormSynced] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordLoading, setPasswordLoading] = useState(false);
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     if (profile && !formSynced) {
@@ -103,66 +96,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handlePasswordSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      toastError("New passwords do not match");
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      toastError("New password must be at least 6 characters");
-      return;
-    }
-
-    setPasswordLoading(true);
-    try {
-      await api<ApiResponse<{ message: string }>>("/auth/change-password", {
-        method: "PATCH",
-        body: JSON.stringify({
-          currentPassword,
-          newPassword,
-          confirmPassword,
-        }),
-      });
-      toastSuccess("Password changed successfully");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to change password");
-    } finally {
-      setPasswordLoading(false);
-    }
-  };
-
-  const handleDeleteAccount = async (e: FormEvent) => {
-    e.preventDefault();
-    if (
-      !confirm(
-        "Delete your account permanently? All messages, posts, and data will be removed."
-      )
-    ) {
-      return;
-    }
-
-    setDeleteLoading(true);
-    try {
-      await api("/auth/account", {
-        method: "DELETE",
-        auth: true,
-        body: JSON.stringify({ password: deletePassword }),
-      });
-      toastSuccess("Account deleted");
-      clearToken();
-      router.push("/login");
-    } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to delete account");
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
   const email = profile?.email || user?.email || "";
 
   return (
@@ -170,8 +103,13 @@ export default function DashboardPage() {
       <div className="page-shell">
         <PageHeader
           title="Your Profile"
-          subtitle="Update your personal information and security"
+          subtitle="Update your personal information"
           refreshing={profileRefreshing && !fetching}
+          action={
+            <Link href="/settings" className="btn-secondary text-sm">
+              Account settings
+            </Link>
+          }
         />
         <div className="page-content">
           {fetching && !profile ? (
@@ -332,123 +270,19 @@ export default function DashboardPage() {
                 </button>
               </form>
 
-              <form onSubmit={handlePasswordSubmit} className="card space-y-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-                    <svg
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.75}
-                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-slate-900">
-                      Change password
-                    </h3>
-                    <p className="text-sm text-slate-500">
-                      Use a strong password you don&apos;t use elsewhere
-                    </p>
-                  </div>
-                </div>
-
+              <div className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Current password
-                  </label>
-                  <input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    required
-                    className="input-field"
-                    placeholder="Enter current password"
-                    autoComplete="current-password"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    New password
-                  </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    className="input-field"
-                    placeholder="Min. 6 characters"
-                    autoComplete="new-password"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Confirm new password
-                  </label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    className="input-field"
-                    placeholder="Re-enter new password"
-                    autoComplete="new-password"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={passwordLoading}
-                  className="btn-secondary w-full sm:w-auto"
-                >
-                  {passwordLoading ? "Updating..." : "Update password"}
-                </button>
-              </form>
-
-              <form
-                onSubmit={handleDeleteAccount}
-                className="card space-y-5 border border-rose-200 bg-rose-50/30"
-              >
-                <div>
-                  <h3 className="text-base font-semibold text-rose-700">
-                    Delete account
+                  <h3 className="text-base font-semibold text-slate-900">
+                    Password & account
                   </h3>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Permanently remove your profile, messages, posts, and all data.
-                    This cannot be undone.
+                  <p className="text-sm text-slate-500">
+                    Change password or permanently delete your account
                   </p>
                 </div>
-
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Confirm with your password
-                  </label>
-                  <input
-                    type="password"
-                    value={deletePassword}
-                    onChange={(e) => setDeletePassword(e.target.value)}
-                    required
-                    className="input-field"
-                    placeholder="Enter your password"
-                    autoComplete="current-password"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={deleteLoading}
-                  className="w-full rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50 sm:w-auto"
-                >
-                  {deleteLoading ? "Deleting..." : "Delete my account"}
-                </button>
-              </form>
+                <Link href="/settings" className="btn-secondary shrink-0 text-center">
+                  Open settings
+                </Link>
+              </div>
             </div>
           )}
         </div>

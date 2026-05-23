@@ -29,6 +29,12 @@ const envSchema = z.object({
     .string()
     .optional()
     .transform((v) => v === "true" || v === "1"),
+  SOCKET_REDIS_ADAPTER: z
+    .string()
+    .optional()
+    .transform((v) => v !== "false" && v !== "0"),
+  MONGODB_MAX_POOL_SIZE: z.coerce.number().default(50),
+  MONGODB_MIN_POOL_SIZE: z.coerce.number().default(5),
 });
 
 const parsed = envSchema.safeParse(process.env);
