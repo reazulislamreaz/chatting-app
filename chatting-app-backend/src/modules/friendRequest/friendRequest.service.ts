@@ -233,6 +233,17 @@ export class FriendRequestService {
       .select("_id senderId receiverId status")
       .lean();
 
+    return this.relationshipFromRequest(currentUserId, request);
+  }
+
+  private relationshipFromRequest(
+    currentUserId: string,
+    request: {
+      _id: { toString(): string };
+      senderId: { toString(): string };
+      status: string;
+    } | null
+  ) {
     if (!request) {
       return { status: "none" as const };
     }
@@ -255,6 +266,59 @@ export class FriendRequestService {
     }
 
     return { status: "none" as const };
+  }
+
+  async getRelationshipStatusesForUsers(
+    currentUserId: string,
+    otherUserIds: string[]
+  ) {
+    if (otherUserIds.length === 0) {
+      return new Map<string, ReturnType<typeof this.relationshipFromRequest>>();
+    }
+
+    const objectIds = otherUserIds.map((id) => new mongoose.Types.ObjectId(id));
+    const requests = await FriendRequest.find({
+      $or: [
+        { senderId: currentUserId, receiverId: { $in: objectIds } },
+        { senderId: { $in: objectIds }, receiverId: currentUserId },
+      ],
+    })
+      .select("_id senderId receiverId status")
+      .lean();
+
+    const requestByOtherId = new Map<
+      string,
+      {
+        _id: { toString(): string };
+        senderId: { toString(): string };
+        status: string;
+      }
+    >();
+
+    for (const request of requests) {
+      const otherId =
+        request.senderId.toString() === currentUserId
+          ? request.receiverId.toString()
+          : request.senderId.toString();
+      requestByOtherId.set(otherId, request);
+    }
+
+    const relationships = new Map<
+      string,
+      ReturnType<typeof this.relationshipFromRequest>
+    >();
+
+    for (const otherUserId of otherUserIds) {
+      relationships.set(
+        otherUserId,
+        this.relationshipFromRequest(
+          currentUserId,
+          requestByOtherId.get(otherUserId) ?? null
+        )
+      );
+    }
+
+    return relationships;
   }
 
   async areFriends(userId1: string, userId2: string): Promise<boolean> {

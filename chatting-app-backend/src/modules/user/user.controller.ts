@@ -34,8 +34,18 @@ export class UserController {
     const search = query.search;
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 20;
-    const result = await userService.listUsers(req.user!.userId, search, page, limit);
-    res.json({ success: true, data: result });
+    const currentUserId = req.user!.userId;
+    const result = await userService.listUsers(currentUserId, search, page, limit);
+    const relationships = await friendRequestService.getRelationshipStatusesForUsers(
+      currentUserId,
+      result.users.map((user) => user.id)
+    );
+    const users = result.users.map((user) => ({
+      ...user,
+      relationship: relationships.get(user.id) ?? { status: "none" as const },
+    }));
+
+    res.json({ success: true, data: { ...result, users } });
   });
 
   getUserById = asyncHandler(async (req: AuthRequest, res: Response) => {

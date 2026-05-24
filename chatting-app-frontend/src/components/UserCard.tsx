@@ -11,6 +11,7 @@ interface UserCardProps {
 }
 
 export function UserCard({ user, onAddFriend, sendingRequest }: UserCardProps) {
+  const relationship = user.relationship?.status ?? "none";
   const subtitle =
     user.relationStatus ||
     user.professional ||
@@ -55,7 +56,7 @@ export function UserCard({ user, onAddFriend, sendingRequest }: UserCardProps) {
         </div>
       </PrefetchLink>
 
-      {onAddFriend && (
+      {relationship === "none" && onAddFriend && (
         <div className="border-t border-surface-border px-4 py-3">
           <button
             type="button"
@@ -68,6 +69,23 @@ export function UserCard({ user, onAddFriend, sendingRequest }: UserCardProps) {
           >
             {sendingRequest ? "Sending..." : "Add friend"}
           </button>
+        </div>
+      )}
+      {relationship === "pending_sent" && (
+        <div className="border-t border-surface-border px-4 py-3">
+          <button type="button" disabled className="btn-secondary w-full !py-2.5 text-sm">
+            Friend request sent
+          </button>
+        </div>
+      )}
+      {relationship === "friends" && (
+        <div className="border-t border-surface-border px-4 py-3">
+          <PrefetchLink
+            href={`/chat/${user.id}`}
+            className="btn-primary block w-full !py-2.5 text-center text-sm"
+          >
+            Send message
+          </PrefetchLink>
         </div>
       )}
     </article>
