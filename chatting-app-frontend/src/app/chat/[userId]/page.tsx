@@ -461,6 +461,37 @@ export default function ChatPage() {
                   </svg>
                 </button>
               )}
+              {otherUser && (
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setHeaderMenuOpen((open) => !open)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10"
+                    aria-label="Chat options"
+                  >
+                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 4a2 2 0 110-4 2 2 0 010 4zm0 4a2 2 0 110-4 2 2 0 010 4z" />
+                    </svg>
+                  </button>
+                  {headerMenuOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setHeaderMenuOpen(false)}
+                      />
+                      <div className="absolute right-0 top-full z-20 mt-1 min-w-[180px] overflow-hidden rounded-xl border border-surface-border bg-white py-1 shadow-lg">
+                        <button
+                          type="button"
+                          onClick={handleDeleteConversation}
+                          className="block w-full px-4 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50"
+                        >
+                          Delete conversation
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </>
           ) : headerLoading ? (
             <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -495,6 +526,7 @@ export default function ChatPage() {
                   key={msg.id}
                   message={msg}
                   isOwn={msg.senderId === user?.id}
+                  onReply={setReplyTo}
                   onEdit={
                     msg.senderId === user?.id &&
                     !msg.isDeleted &&
