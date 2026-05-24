@@ -9,6 +9,9 @@ const BACKEND_URL =
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname),
+  devIndicators: {
+    position: "bottom-right",
+  },
   async rewrites() {
     return [
       {

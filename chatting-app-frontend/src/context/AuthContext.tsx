@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useState,
   ReactNode,
 } from "react";
@@ -42,13 +43,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    const token = getToken();
-    if (token) {
-      refreshUser().finally(() => setLoading(false));
-    } else {
+  useLayoutEffect(() => {
+    if (!getToken()) {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(() => {
+      if (cancelled) return;
+      clearToken();
+      setUser(null);
+      disconnectSocket();
+      setLoading(false);
+    }, 10_000);
+
+    refreshUser().finally(() => {
+      if (cancelled) return;
+      window.clearTimeout(timeoutId);
+      setLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
   }, [refreshUser]);
 
   const login = async (email: string, password: string) => {

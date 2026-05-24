@@ -32,13 +32,21 @@ export function getUploadUrl(path?: string): string {
 
 interface RequestOptions extends RequestInit {
   auth?: boolean;
+  timeoutMs?: number;
 }
+
+const DEFAULT_TIMEOUT_MS = 15_000;
 
 export async function api<T>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { auth = true, headers: customHeaders, ...rest } = options;
+  const {
+    auth = true,
+    headers: customHeaders,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    ...rest
+  } = options;
 
   const headers: HeadersInit = {
     ...(rest.body instanceof FormData
@@ -54,19 +62,30 @@ export async function api<T>(
     }
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   let response: Response;
   try {
     response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
       ...rest,
       headers,
+      signal: controller.signal,
     });
   } catch (err) {
-    const detail = err instanceof Error ? err.message : "Network error";
+    const detail =
+      err instanceof Error && err.name === "AbortError"
+        ? "Request timed out"
+        : err instanceof Error
+          ? err.message
+          : "Network error";
     throw new Error(
       process.env.NODE_ENV === "development"
         ? `Cannot reach API: ${detail}`
-        : "Cannot reach the API server. Check your connection and try again."
+        : "Cannot reach the API server. Check your connection and try again.",
     );
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   let data: { message?: string; success?: boolean };

@@ -122,7 +122,7 @@ export default function FeedPage() {
             <CreatePost onPostCreated={handlePostCreated} />
 
             {isPending ? (
-              <FeedSkeleton count={3} />
+              <FeedSkeleton count={2} />
             ) : posts.length === 0 ? (
               <EmptyState
                 title="No posts yet"

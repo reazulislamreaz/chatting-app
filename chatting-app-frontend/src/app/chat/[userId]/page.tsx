@@ -552,6 +552,8 @@ export default function ChatPage() {
           onSendVoice={handleSendVoice}
           onInputChange={handleInputChange}
           sending={sending || (messagesFetching && showMessagesSkeleton)}
+          replyTo={replyTo}
+          onCancelReply={() => setReplyTo(null)}
         />
 
         {editingMessage && (

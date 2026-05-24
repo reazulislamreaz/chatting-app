@@ -133,39 +133,51 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              <form
-                onSubmit={handleProfileSubmit}
-                className="card animate-fade-in space-y-5"
-              >
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900">
-                    Profile details
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Keep your information up to date
-                  </p>
+              <form onSubmit={handleProfileSubmit} className="form-card animate-fade-in">
+                <div className="form-card-header">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                      <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.75}
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-slate-900">
+                        Profile details
+                      </h3>
+                      <p className="mt-0.5 text-sm text-slate-500">
+                        Keep your information up to date
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    readOnly
-                    disabled
-                    className="input-field cursor-not-allowed bg-slate-50 text-slate-500"
-                  />
-                  <p className="mt-1 text-xs text-slate-400">
-                    Email cannot be changed
-                  </p>
-                </div>
+                <div className="form-card-body">
+                  <div className="form-field">
+                    <label className="form-label">Email</label>
+                    <input
+                      type="email"
+                      value={email}
+                      readOnly
+                      disabled
+                      className="input-field cursor-not-allowed bg-slate-50 text-slate-500"
+                    />
+                    <p className="form-hint">Email cannot be changed</p>
+                  </div>
 
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Full name
-                  </label>
+                  <div className="form-grid-2">
+                    <div className="form-field">
+                      <label className="form-label">Full name</label>
                   <input
                     type="text"
                     value={name}
@@ -174,39 +186,33 @@ export default function DashboardPage() {
                     minLength={2}
                     className="input-field"
                     placeholder="Your full name"
-                  />
-                </div>
+                    />
+                    </div>
+                    <div className="form-field">
+                      <label className="form-label">Date of birth</label>
+                      <input
+                        type="date"
+                        value={dateOfBirth}
+                        onChange={(e) => setDateOfBirth(e.target.value)}
+                        className="input-field"
+                      />
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Date of birth
-                  </label>
-                  <input
-                    type="date"
-                    value={dateOfBirth}
-                    onChange={(e) => setDateOfBirth(e.target.value)}
-                    className="input-field"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Address
-                  </label>
+                  <div className="form-field">
+                    <label className="form-label">Address</label>
                   <textarea
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     rows={2}
                     className="input-field resize-none"
                     placeholder="Street, city, country"
-                  />
-                </div>
+                    />
+                  </div>
 
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                      Profession
-                    </label>
+                  <div className="form-grid-2">
+                    <div className="form-field">
+                      <label className="form-label">Profession</label>
                     <input
                       type="text"
                       value={professional}
@@ -214,11 +220,9 @@ export default function DashboardPage() {
                       className="input-field"
                       placeholder="e.g. Software Engineer"
                     />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                      Religion
-                    </label>
+                    </div>
+                    <div className="form-field">
+                      <label className="form-label">Religion</label>
                     <input
                       type="text"
                       value={religious}
@@ -226,26 +230,22 @@ export default function DashboardPage() {
                       className="input-field"
                       placeholder="Your faith or belief"
                     />
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Hobbies
-                  </label>
+                  <div className="form-grid-2">
+                    <div className="form-field">
+                      <label className="form-label">Hobbies</label>
                   <input
                     type="text"
                     value={hobby}
                     onChange={(e) => setHobby(e.target.value)}
                     className="input-field"
                     placeholder="Reading, sports, music..."
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Relation status
-                  </label>
+                    />
+                    </div>
+                    <div className="form-field">
+                      <label className="form-label">Relation status</label>
                   <select
                     value={relationStatus}
                     onChange={(e) => setRelationStatus(e.target.value)}
@@ -256,28 +256,33 @@ export default function DashboardPage() {
                         {opt.label}
                       </option>
                     ))}
-                  </select>
+                    </select>
+                    </div>
+                  </div>
+
+                  <div className="form-field">
+                    <label className="form-label">Profile photo</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+                      className="form-file-input"
+                    />
+                    <p className="form-hint">
+                      JPG or PNG. A square photo works best.
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Profile photo
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
-                    className="w-full text-sm text-slate-500 file:mr-4 file:rounded-xl file:border-0 file:bg-brand-50 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100"
-                  />
+                <div className="form-actions">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn-primary w-full sm:w-auto sm:min-w-[10rem]"
+                  >
+                    {loading ? "Saving..." : "Save profile"}
+                  </button>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-primary w-full sm:w-auto"
-                >
-                  {loading ? "Saving..." : "Save profile"}
-                </button>
               </form>
 
               <Link

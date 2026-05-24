@@ -43,30 +43,19 @@ export function MessageListSkeleton({ count = 8 }: { count?: number }) {
 
 export function PostCardSkeleton() {
   return (
-    <div className="card space-y-4">
+    <div className="card w-full animate-pulse space-y-3">
       <div className="flex items-center gap-3">
-        <SkeletonCircle size="h-10 w-10" />
-        <div className="flex-1 space-y-2">
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-3 w-16" />
-        </div>
+        <div className="h-10 w-10 shrink-0 rounded-full bg-slate-200" />
+        <div className="h-4 w-32 rounded bg-slate-200" />
       </div>
-      <div className="space-y-2">
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-3 w-4/5" />
-      </div>
-      <Skeleton className="h-48 w-full rounded-xl" />
-      <div className="flex gap-4 border-t border-surface-border pt-3">
-        <Skeleton className="h-4 w-16" />
-        <Skeleton className="h-4 w-20" />
-      </div>
+      <div className="h-24 w-full rounded-xl bg-slate-200" />
     </div>
   );
 }
 
-export function FeedSkeleton({ count = 3 }: { count?: number }) {
+export function FeedSkeleton({ count = 2 }: { count?: number }) {
   return (
-    <div className="space-y-4">
+    <div className="w-full space-y-4">
       {Array.from({ length: count }).map((_, i) => (
         <PostCardSkeleton key={i} />
       ))}
@@ -162,34 +151,6 @@ export function DashboardSkeleton() {
             <Skeleton className="h-10 w-full rounded-xl" />
           </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-export function AppShellSkeleton() {
-  return (
-    <div className="flex min-h-[100dvh] bg-wa-panel">
-      <aside className="hidden w-64 shrink-0 border-r border-surface-border bg-white p-4 md:block">
-        <Skeleton className="mb-6 h-8 w-32" />
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full rounded-xl" />
-          ))}
-        </div>
-      </aside>
-      <main className="flex min-w-0 flex-1 flex-col pb-[4.25rem] md:pb-0">
-        <Skeleton className="h-14 w-full shrink-0 rounded-none" />
-        <div className="flex flex-1 p-4">
-          <FeedSkeleton count={2} />
-        </div>
-      </main>
-      <div className="fixed bottom-0 left-0 right-0 border-t border-surface-border bg-white md:hidden">
-        <div className="grid grid-cols-6 gap-1 px-2 py-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="mx-auto h-10 w-10 rounded-xl" />
-          ))}
-        </div>
       </div>
     </div>
   );
