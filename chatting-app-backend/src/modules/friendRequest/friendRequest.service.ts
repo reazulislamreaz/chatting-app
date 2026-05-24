@@ -98,6 +98,31 @@ export class FriendRequestService {
     return this.populateRequest(requestId);
   }
 
+  async cancelRequest(requestId: string, senderId: string) {
+    const request = await FriendRequest.findById(requestId)
+      .select(FRIEND_REQUEST_SELECT)
+      .lean();
+    if (!request) {
+      throw new AppError(404, "Friend request not found");
+    }
+
+    if (request.senderId.toString() !== senderId) {
+      throw new AppError(403, "Not authorized to cancel this request");
+    }
+
+    if (request.status !== "pending") {
+      throw new AppError(400, "Only pending requests can be cancelled");
+    }
+
+    const receiverId = request.receiverId.toString();
+    await FriendRequest.findByIdAndDelete(requestId);
+    await cacheInvalidate.relation(senderId, receiverId);
+    await cacheInvalidate.friendRequests(senderId);
+    await cacheInvalidate.friendRequests(receiverId);
+
+    return { id: requestId, cancelled: true };
+  }
+
   async getPendingReceived(userId: string) {
     return cache.getOrSet(
       keys.friendReqReceived(userId),

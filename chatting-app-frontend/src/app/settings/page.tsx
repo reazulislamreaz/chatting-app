@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
@@ -62,7 +61,7 @@ export default function SettingsPage() {
     }
     if (
       !confirm(
-        "Delete your account permanently? All messages, posts, and data will be removed."
+        "Delete your account permanently? All messages, posts, and data will be removed.",
       )
     ) {
       return;
@@ -91,20 +90,16 @@ export default function SettingsPage() {
       <div className="page-shell">
         <PageHeader
           title="Settings"
-          subtitle="Password and account security"
-          action={
-            <Link href="/dashboard" className="btn-secondary text-sm">
-              Back to profile
-            </Link>
-          }
+          subtitle="Password, sounds, and account security"
         />
+
         <div className="page-content">
-          <div className="content-narrow animate-fade-in space-y-4 sm:space-y-6">
+          <div className="page-container mx-auto max-w-2xl animate-fade-in space-y-4 md:space-y-5">
             <MessageSoundSettings />
 
             <form onSubmit={handlePasswordSubmit} className="card space-y-5">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
                   <svg
                     className="h-5 w-5"
                     fill="none"

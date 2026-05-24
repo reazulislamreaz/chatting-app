@@ -51,7 +51,7 @@ export function setupSocket(io: Server): void {
 
     socket.on(
       "send_message",
-      async (data: { receiverId: string; content: string }, callback) => {
+      async (data: { receiverId: string; content: string; replyToId?: string }, callback) => {
         if (!limitSend()) {
           if (typeof callback === "function") {
             callback({ success: false, message: "Rate limit exceeded. Slow down." });
@@ -64,6 +64,10 @@ export function setupSocket(io: Server): void {
             userId,
             data.receiverId,
             data.content,
+            undefined,
+            undefined,
+            0,
+            data.replyToId
           );
 
           emitReceiveMessage(message);

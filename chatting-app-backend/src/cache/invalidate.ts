@@ -51,6 +51,7 @@ export const cacheInvalidate = {
 
   messages(userId1: string, userId2: string) {
     return cache.del(
+      keys.messagesLatest(userId1, userId2),
       keys.messages(userId1, userId2, 1),
       keys.messages(userId1, userId2, 2),
       keys.messages(userId1, userId2, 3)

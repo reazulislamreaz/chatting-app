@@ -17,6 +17,7 @@ export interface IMessage extends Document {
   readAt?: Date;
   isDeleted: boolean;
   editedAt?: Date;
+  replyToId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +37,7 @@ const messageSchema = new Schema<IMessage>(
     readAt: { type: Date },
     isDeleted: { type: Boolean, default: false },
     editedAt: { type: Date },
+    replyToId: { type: Schema.Types.ObjectId, ref: "Message" },
   },
   { timestamps: true }
 );

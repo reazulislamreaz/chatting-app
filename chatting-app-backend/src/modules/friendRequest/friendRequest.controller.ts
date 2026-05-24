@@ -35,6 +35,14 @@ export class FriendRequestController {
     const friends = await friendRequestService.getFriends(req.user!.userId);
     res.json({ success: true, data: friends });
   });
+
+  cancelRequest = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const result = await friendRequestService.cancelRequest(
+      getParamId(req.params.id),
+      req.user!.userId
+    );
+    res.json({ success: true, data: result });
+  });
 }
 
 export const friendRequestController = new FriendRequestController();

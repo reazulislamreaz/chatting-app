@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/PageHeader";
+import { SignOutButton } from "@/components/SignOutButton";
 import { DashboardSkeleton } from "@/components/skeletons";
 import { api } from "@/lib/api";
 import { invalidateProfile } from "@/lib/invalidateCache";
@@ -15,15 +16,18 @@ import { useAuth } from "@/context/AuthContext";
 import type { User } from "@/types";
 import { RELATION_STATUS_OPTIONS } from "@/lib/relationStatus";
 
-function applyProfileToForm(profile: User, setters: {
-  setName: (v: string) => void;
-  setAddress: (v: string) => void;
-  setProfessional: (v: string) => void;
-  setReligious: (v: string) => void;
-  setHobby: (v: string) => void;
-  setRelationStatus: (v: string) => void;
-  setDateOfBirth: (v: string) => void;
-}) {
+function applyProfileToForm(
+  profile: User,
+  setters: {
+    setName: (v: string) => void;
+    setAddress: (v: string) => void;
+    setProfessional: (v: string) => void;
+    setReligious: (v: string) => void;
+    setHobby: (v: string) => void;
+    setRelationStatus: (v: string) => void;
+    setDateOfBirth: (v: string) => void;
+  },
+) {
   setters.setName(profile.name ?? "");
   setters.setAddress(profile.address ?? "");
   setters.setProfessional(profile.professional ?? "");
@@ -105,41 +109,42 @@ export default function DashboardPage() {
           title="Your Profile"
           subtitle="Update your personal information"
           refreshing={profileRefreshing && !fetching}
-          action={
-            <Link href="/settings" className="btn-secondary text-sm">
-              Account settings
-            </Link>
-          }
         />
+
         <div className="page-content">
           {fetching && !profile ? (
             <DashboardSkeleton />
           ) : (
-            <div className="page-container animate-fade-in space-y-4 sm:space-y-6 lg:max-w-5xl">
-              <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,280px)_1fr] lg:items-start xl:grid-cols-[minmax(0,320px)_1fr]">
-              <div className="card flex flex-col items-center text-center sm:flex-row sm:text-left lg:flex-col lg:items-center lg:text-center">
+            <div className="page-container mx-auto max-w-2xl space-y-4 md:space-y-5">
+              <div className="card flex animate-fade-in flex-col items-center text-center">
                 <Avatar
                   name={profile?.name || user?.name || "U"}
                   src={profile?.profilePicture || user?.profilePicture}
                   size="xl"
                 />
-                <div className="mt-4 sm:ml-6 sm:mt-0 lg:ml-0 lg:mt-4">
-                  <h2 className="text-xl font-bold text-slate-900 lg:text-2xl">
-                    {profile?.name || user?.name}
-                  </h2>
-                  <p className="text-sm text-slate-500">{email}</p>
-                  {profile?.relationStatus && (
-                    <p className="mt-1 text-sm font-medium text-brand-600">
-                      {profile.relationStatus}
-                    </p>
-                  )}
-                </div>
+                <h2 className="mt-4 text-xl font-bold text-slate-900">
+                  {profile?.name || user?.name}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">{email}</p>
+                {profile?.relationStatus && (
+                  <p className="mt-1 text-sm font-medium text-brand-600">
+                    {profile.relationStatus}
+                  </p>
+                )}
               </div>
 
-              <form onSubmit={handleProfileSubmit} className="card space-y-5 lg:space-y-6">
-                <h3 className="text-base font-semibold text-slate-900">
-                  Profile details
-                </h3>
+              <form
+                onSubmit={handleProfileSubmit}
+                className="card animate-fade-in space-y-5"
+              >
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900">
+                    Profile details
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Keep your information up to date
+                  </p>
+                </div>
 
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700">
@@ -197,7 +202,7 @@ export default function DashboardPage() {
                   />
                 </div>
 
-                <div className="grid gap-5 md:grid-cols-2">
+                <div className="grid gap-5 sm:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">
                       Profession
@@ -266,25 +271,64 @@ export default function DashboardPage() {
                   />
                 </div>
 
-                <button type="submit" disabled={loading} className="btn-primary w-full sm:w-auto">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn-primary w-full sm:w-auto"
+                >
                   {loading ? "Saving..." : "Save profile"}
                 </button>
               </form>
-              </div>
 
-              <div className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:max-w-5xl">
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900">
-                    Password & account
-                  </h3>
-                  <p className="text-sm text-slate-500">
-                    Change password or permanently delete your account
-                  </p>
-                </div>
-                <Link href="/settings" className="btn-secondary shrink-0 text-center">
-                  Open settings
-                </Link>
-              </div>
+              <Link
+                href="/settings"
+                className="card group flex animate-fade-in items-center gap-4 transition hover:shadow-md"
+              >
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 transition group-hover:bg-brand-100">
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.75}
+                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.75}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-slate-900">
+                    Account settings
+                  </span>
+                  <span className="mt-0.5 block text-sm text-slate-500">
+                    Password, sounds, and account security
+                  </span>
+                </span>
+                <svg
+                  className="h-5 w-5 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </Link>
+
+              <SignOutButton variant="card" />
             </div>
           )}
         </div>

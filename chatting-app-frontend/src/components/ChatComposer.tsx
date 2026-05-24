@@ -6,17 +6,22 @@ import {
   formatVoiceLimitLabel,
 } from "@/lib/voiceLimits";
 import { toastError, toastSuccess } from "@/lib/toast";
+import { getReplyPreviewText } from "@/lib/replyPreview";
+import type { Message } from "@/types";
 
 interface ChatComposerProps {
-  onSendText: (content: string) => void;
-  onSendImage: (file: File, caption: string) => Promise<void>;
+  onSendText: (content: string, replyToId?: string) => void;
+  onSendImage: (file: File, caption: string, replyToId?: string) => Promise<void>;
   onSendVoice: (
     file: File,
     durationSeconds: number,
     caption: string,
+    replyToId?: string,
   ) => Promise<void>;
   onInputChange?: (value: string) => void;
   sending?: boolean;
+  replyTo?: Message | null;
+  onCancelReply?: () => void;
 }
 
 function pickRecorderMimeType(): string {
@@ -41,6 +46,8 @@ export function ChatComposer({
   onSendVoice,
   onInputChange,
   sending,
+  replyTo,
+  onCancelReply,
 }: ChatComposerProps) {
   const [content, setContent] = useState("");
   const [image, setImage] = useState<File | null>(null);
@@ -186,7 +193,7 @@ export function ChatComposer({
         setContent("");
         setRecording(false);
         setRecordingSeconds(0);
-        await onSendVoice(file, duration, caption);
+        await onSendVoice(file, duration, caption, replyTo?.id);
       };
 
       recorder.start();
@@ -217,13 +224,13 @@ export function ChatComposer({
       const caption = content.trim();
       setContent("");
       clearImage();
-      await onSendImage(image, caption);
+      await onSendImage(image, caption, replyTo?.id);
       return;
     }
 
     const text = content.trim();
     setContent("");
-    onSendText(text);
+    onSendText(text, replyTo?.id);
   };
 
   return (
@@ -231,6 +238,36 @@ export function ChatComposer({
       onSubmit={handleSubmit}
       className="composer-bottom z-20 shrink-0 border-t border-surface-border bg-wa-panel px-2 pt-2.5 sm:px-4"
     >
+      {replyTo && (
+        <div className="mx-auto mb-2 flex w-full max-w-2xl items-start gap-2 rounded-xl border border-brand-200 bg-brand-50/80 px-3 py-2 sm:max-w-3xl lg:max-w-4xl">
+          <div className="min-w-0 flex-1 border-l-4 border-brand-500 pl-2">
+            <p className="text-xs font-semibold text-brand-700">Replying to</p>
+            <p className="line-clamp-2 text-sm text-slate-600">
+              {getReplyPreviewText({
+                id: replyTo.id,
+                senderId: replyTo.senderId,
+                content: replyTo.content,
+                imageUrl: replyTo.imageUrl,
+                voiceUrl: replyTo.voiceUrl,
+                isDeleted: replyTo.isDeleted,
+              })}
+            </p>
+          </div>
+          {onCancelReply && (
+            <button
+              type="button"
+              onClick={onCancelReply}
+              className="rounded-full p-1.5 text-slate-500 hover:bg-white"
+              aria-label="Cancel reply"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
+
       {preview && (
         <div className="mx-auto mb-2 flex w-full max-w-2xl items-start gap-2 rounded-xl bg-white p-2 shadow-sm sm:max-w-3xl lg:max-w-4xl">
           <img

@@ -63,6 +63,16 @@ export default function FriendsPage() {
     }
   };
 
+  const cancelRequest = async (id: string) => {
+    try {
+      await api(`/friend-requests/${id}`, { method: "DELETE" });
+      toastSuccess("Friend request cancelled");
+      await invalidateFriends(queryClient);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Failed to cancel request");
+    }
+  };
+
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "friends", label: "Friends", count: friends.length },
     { key: "received", label: "Received", count: received.length },
@@ -192,18 +202,30 @@ export default function FriendsPage() {
             ) : (
               <div className="space-y-3">
                 {sent.map((req) => (
-                  <div key={req.id} className="card flex items-center gap-4 p-4">
-                    <Avatar
-                      src={req.receiver?.profilePicture}
-                      name={req.receiver?.name ?? "User"}
-                      size="lg"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">
-                        {req.receiver?.name ?? "Unknown"}
-                      </p>
-                      <p className="text-sm text-amber-600">Pending</p>
+                  <div
+                    key={req.id}
+                    className="card flex flex-col gap-4 p-4 sm:flex-row sm:items-center"
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-4">
+                      <Avatar
+                        src={req.receiver?.profilePicture}
+                        name={req.receiver?.name ?? "User"}
+                        size="lg"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">
+                          {req.receiver?.name ?? "Unknown"}
+                        </p>
+                        <p className="text-sm text-amber-600">Pending</p>
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => cancelRequest(req.id)}
+                      className="btn-secondary w-full sm:w-auto"
+                    >
+                      Cancel request
+                    </button>
                   </div>
                 ))}
               </div>

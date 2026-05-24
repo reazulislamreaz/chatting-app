@@ -148,15 +148,14 @@ export function FriendRowSkeleton({ count = 4 }: { count?: number }) {
 
 export function DashboardSkeleton() {
   return (
-    <div className="page-container space-y-6">
-      <div className="card flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+    <div className="page-container mx-auto max-w-2xl space-y-4 md:space-y-5">
+      <div className="card flex flex-col items-center py-8">
         <SkeletonCircle size="h-24 w-24" />
-        <div className="w-full flex-1 space-y-3">
-          <Skeleton className="h-10 w-full rounded-xl" />
-          <Skeleton className="h-10 w-full rounded-xl" />
-        </div>
+        <Skeleton className="mt-4 h-6 w-40" />
+        <Skeleton className="mt-2 h-4 w-48" />
       </div>
-      <div className="card grid gap-4 sm:grid-cols-2">
+      <div className="card space-y-4">
+        <Skeleton className="h-5 w-32" />
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="space-y-2">
             <Skeleton className="h-3 w-20" />
@@ -179,12 +178,19 @@ export function AppShellSkeleton() {
           ))}
         </div>
       </aside>
-      <main className="flex flex-1 flex-col">
+      <main className="flex min-w-0 flex-1 flex-col pb-[4.25rem] md:pb-0">
         <Skeleton className="h-14 w-full shrink-0 rounded-none" />
-        <div className="flex flex-1 items-center justify-center p-6">
+        <div className="flex flex-1 p-4">
           <FeedSkeleton count={2} />
         </div>
       </main>
+      <div className="fixed bottom-0 left-0 right-0 border-t border-surface-border bg-white md:hidden">
+        <div className="grid grid-cols-6 gap-1 px-2 py-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="mx-auto h-10 w-10 rounded-xl" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

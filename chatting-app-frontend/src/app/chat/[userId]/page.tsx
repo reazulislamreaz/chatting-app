@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "@/components/Avatar";
 import { MessageListSkeleton } from "@/components/skeletons";
@@ -12,16 +12,24 @@ import { MessageBubble } from "@/components/MessageBubble";
 import { EditMessageModal } from "@/components/EditMessageModal";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
-import { useMessagesQuery, useUserQuery } from "@/hooks/queries";
+import {
+  flattenMessagePages,
+  useMessagesInfiniteQuery,
+  useUserQuery,
+  type MessagesInfiniteData,
+} from "@/hooks/queries";
+import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
 import { getSocket } from "@/lib/socket";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 import type { Message, ApiResponse, ChatListItem } from "@/types";
 import { toastError, toastSuccess } from "@/lib/toast";
+import { invalidateMessages } from "@/lib/invalidateCache";
 import { useCall } from "@/context/CallContext";
 
 export default function ChatPage() {
   const params = useParams();
+  const router = useRouter();
   const otherUserId = params.userId as string;
   const { user } = useAuth();
   const { refreshChatList, typingUsers } = useChat();
@@ -30,19 +38,31 @@ export default function ChatPage() {
 
   const { data: otherUser, isPending: userPending } = useUserQuery(otherUserId);
   const {
-    data: initialMessages,
+    data: messagesData,
     isPending: messagesPending,
     isFetching: messagesFetching,
     isSuccess: messagesReady,
-  } = useMessagesQuery(otherUserId);
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useMessagesInfiniteQuery(otherUserId);
 
-  const [messages, setMessages] = useState<Message[]>([]);
   const [sending, setSending] = useState(false);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTypingEmitRef = useRef(0);
   const markedReadRef = useRef(false);
+  const prevFirstIdRef = useRef<string | null>(null);
+  const prevLastIdRef = useRef<string | null>(null);
+
+  const messages = useMemo(
+    () => flattenMessagePages(messagesData?.pages),
+    [messagesData?.pages],
+  );
 
   const markConversationRead = useCallback(() => {
     getSocket().emit("message_read", { senderId: otherUserId });
@@ -61,55 +81,111 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const syncMessagesCache = useCallback(
-    (updater: (prev: Message[]) => Message[]) => {
-      setMessages((prev) => {
-        const next = updater(prev);
-        queryClient.setQueryData(queryKeys.messages(otherUserId), next);
-        return next;
-      });
+  const updateMessagesCache = useCallback(
+    (updater: (old: MessagesInfiniteData | undefined) => MessagesInfiniteData | undefined) => {
+      queryClient.setQueryData(queryKeys.messages(otherUserId), updater);
     },
     [queryClient, otherUserId],
   );
 
   const appendMessage = useCallback(
     (message: Message) => {
-      syncMessagesCache((prev) => {
-        if (prev.some((m) => m.id === message.id)) return prev;
-        return [...prev, message];
+      updateMessagesCache((old) => {
+        if (!old?.pages.length) {
+          return {
+            pages: [
+              {
+                messages: [message],
+                pagination: { limit: 30, hasMore: false },
+              },
+            ],
+            pageParams: [undefined],
+          };
+        }
+
+        const pages = [...old.pages];
+        const newest = pages[0];
+        if (newest.messages.some((m) => m.id === message.id)) return old;
+
+        pages[0] = {
+          ...newest,
+          messages: [...newest.messages, message],
+        };
+
+        return { ...old, pages };
       });
     },
-    [syncMessagesCache],
+    [updateMessagesCache],
   );
 
   const replaceMessage = useCallback(
     (message: Message) => {
-      syncMessagesCache((prev) =>
-        prev.map((m) => (m.id === message.id ? message : m)),
-      );
+      updateMessagesCache((old) => {
+        if (!old?.pages.length) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            messages: page.messages.map((m) =>
+              m.id === message.id ? message : m,
+            ),
+          })),
+        };
+      });
     },
-    [syncMessagesCache],
+    [updateMessagesCache],
   );
+
+  const loadOlderMessages = useCallback(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+
+    const container = scrollContainerRef.current;
+    const prevScrollHeight = container?.scrollHeight ?? 0;
+
+    void fetchNextPage().then(() => {
+      requestAnimationFrame(() => {
+        if (container) {
+          container.scrollTop = container.scrollHeight - prevScrollHeight;
+        }
+      });
+    });
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  const topSentinelRef = useIntersectionObserver(loadOlderMessages, {
+    enabled: hasNextPage && !showMessagesSkeleton && messages.length > 0,
+    rootMargin: "120px",
+  });
 
   useEffect(() => {
     markedReadRef.current = false;
+    prevFirstIdRef.current = null;
+    prevLastIdRef.current = null;
+    setReplyTo(null);
   }, [otherUserId]);
-
-  useEffect(() => {
-    if (initialMessages) {
-      setMessages(initialMessages);
-    }
-  }, [initialMessages]);
 
   useEffect(() => {
     if (!messagesReady || !user || markedReadRef.current) return;
     markedReadRef.current = true;
-
     markConversationRead();
   }, [messagesReady, user, markConversationRead]);
 
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length === 0) return;
+
+    const firstId = messages[0].id;
+    const lastId = messages[messages.length - 1].id;
+
+    if (prevLastIdRef.current === null) {
+      scrollToBottom();
+    } else if (
+      lastId !== prevLastIdRef.current &&
+      firstId === prevFirstIdRef.current
+    ) {
+      scrollToBottom();
+    }
+
+    prevFirstIdRef.current = firstId;
+    prevLastIdRef.current = lastId;
   }, [messages]);
 
   useEffect(() => {
@@ -150,15 +226,24 @@ export default function ChatPage() {
       }
     };
 
+    const onConversationDeleted = (payload: { otherUserId: string }) => {
+      if (payload.otherUserId === otherUserId) {
+        void invalidateMessages(queryClient, otherUserId);
+        refreshChatList();
+      }
+    };
+
     socket.on("receive_message", onReceiveMessage);
     socket.on("message_updated", onMessageUpdated);
     socket.on("message_deleted", onMessageDeleted);
+    socket.on("conversation_deleted", onConversationDeleted);
     return () => {
       socket.off("receive_message", onReceiveMessage);
       socket.off("message_updated", onMessageUpdated);
       socket.off("message_deleted", onMessageDeleted);
+      socket.off("conversation_deleted", onConversationDeleted);
     };
-  }, [user, otherUserId, appendMessage, replaceMessage, markConversationRead, refreshChatList]);
+  }, [user, otherUserId, appendMessage, replaceMessage, markConversationRead, refreshChatList, queryClient]);
 
   const emitTyping = (isTyping: boolean) => {
     const now = Date.now();
@@ -179,22 +264,23 @@ export default function ChatPage() {
     }
   };
 
-  const handleSendText = (text: string) => {
+  const handleSendText = (text: string, replyToId?: string) => {
     emitTyping(false);
     const socket = getSocket();
     socket.emit(
       "send_message",
-      { receiverId: otherUserId, content: text },
+      { receiverId: otherUserId, content: text, replyToId },
       (response: { success: boolean; data?: Message; message?: string }) => {
         if (response.success && response.data) {
           appendMessage(response.data);
           refreshChatList();
+          setReplyTo(null);
         }
       }
     );
   };
 
-  const handleSendImage = async (file: File, caption: string) => {
+  const handleSendImage = async (file: File, caption: string, replyToId?: string) => {
     setSending(true);
     emitTyping(false);
     try {
@@ -202,6 +288,7 @@ export default function ChatPage() {
       formData.append("receiverId", otherUserId);
       formData.append("content", caption);
       formData.append("image", file);
+      if (replyToId) formData.append("replyToId", replyToId);
 
       const res = await api<ApiResponse<Message>>("/messages", {
         method: "POST",
@@ -209,6 +296,7 @@ export default function ChatPage() {
       });
       appendMessage(res.data);
       refreshChatList();
+      setReplyTo(null);
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Failed to send image");
     } finally {
@@ -220,6 +308,7 @@ export default function ChatPage() {
     file: File,
     durationSeconds: number,
     caption: string,
+    replyToId?: string,
   ) => {
     setSending(true);
     emitTyping(false);
@@ -229,6 +318,7 @@ export default function ChatPage() {
       formData.append("content", caption);
       formData.append("voice", file);
       formData.append("voiceDuration", String(durationSeconds));
+      if (replyToId) formData.append("replyToId", replyToId);
 
       const res = await api<ApiResponse<Message>>("/messages", {
         method: "POST",
@@ -236,12 +326,35 @@ export default function ChatPage() {
       });
       appendMessage(res.data);
       refreshChatList();
+      setReplyTo(null);
     } catch (err) {
       toastError(
         err instanceof Error ? err.message : "Failed to send voice message",
       );
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDeleteConversation = async () => {
+    if (
+      !confirm(
+        "Delete this entire conversation? All messages will be permanently removed.",
+      )
+    ) {
+      return;
+    }
+    setHeaderMenuOpen(false);
+    try {
+      await api(`/chats/${otherUserId}`, { method: "DELETE" });
+      await invalidateMessages(queryClient, otherUserId);
+      refreshChatList();
+      toastSuccess("Conversation deleted");
+      router.push("/chat");
+    } catch (err) {
+      toastError(
+        err instanceof Error ? err.message : "Failed to delete conversation",
+      );
     }
   };
 
@@ -360,7 +473,10 @@ export default function ChatPage() {
           ) : null}
         </header>
 
-        <div className="wa-chat-bg flex-1 overflow-y-auto scroll-pb-28 px-3 py-3 scrollbar-thin sm:scroll-pb-24 sm:px-4">
+        <div
+          ref={scrollContainerRef}
+          className="wa-chat-bg flex-1 overflow-y-auto scroll-pb-28 px-3 py-3 scrollbar-thin sm:scroll-pb-24 sm:px-4"
+        >
           {showMessagesSkeleton ? (
             <MessageListSkeleton count={8} />
           ) : messages.length === 0 ? (
@@ -369,6 +485,11 @@ export default function ChatPage() {
             </p>
           ) : (
             <div className="page-container mx-auto flex max-w-2xl animate-fade-in flex-col gap-1.5 lg:max-w-3xl xl:max-w-4xl">
+              <div ref={topSentinelRef} className="flex h-6 shrink-0 items-center justify-center">
+                {isFetchingNextPage && (
+                  <span className="text-xs text-slate-400">Loading older messages…</span>
+                )}
+              </div>
               {messages.map((msg) => (
                 <MessageBubble
                   key={msg.id}

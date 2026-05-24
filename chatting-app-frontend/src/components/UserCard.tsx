@@ -7,10 +7,18 @@ import type { User } from "@/types";
 interface UserCardProps {
   user: User;
   onAddFriend?: (userId: string) => void;
+  onCancelRequest?: (requestId: string) => void;
   sendingRequest?: boolean;
+  cancellingRequest?: boolean;
 }
 
-export function UserCard({ user, onAddFriend, sendingRequest }: UserCardProps) {
+export function UserCard({
+  user,
+  onAddFriend,
+  onCancelRequest,
+  sendingRequest,
+  cancellingRequest,
+}: UserCardProps) {
   const relationship = user.relationship?.status ?? "none";
   const subtitle =
     user.relationStatus ||
@@ -71,10 +79,18 @@ export function UserCard({ user, onAddFriend, sendingRequest }: UserCardProps) {
           </button>
         </div>
       )}
-      {relationship === "pending_sent" && (
+      {relationship === "pending_sent" && onCancelRequest && user.relationship?.requestId && (
         <div className="border-t border-surface-border px-4 py-3">
-          <button type="button" disabled className="btn-secondary w-full !py-2.5 text-sm">
-            Friend request sent
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              onCancelRequest(user.relationship!.requestId!);
+            }}
+            disabled={cancellingRequest}
+            className="btn-secondary w-full !py-2.5 text-sm"
+          >
+            {cancellingRequest ? "Cancelling..." : "Cancel request"}
           </button>
         </div>
       )}

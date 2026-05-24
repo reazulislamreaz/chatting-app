@@ -47,6 +47,15 @@ export type CallLogStatus =
   | "busy"
   | "disconnected";
 
+export interface MessageReply {
+  id: string;
+  senderId: string;
+  content: string;
+  imageUrl?: string;
+  voiceUrl?: string;
+  isDeleted?: boolean;
+}
+
 export interface Message {
   id: string;
   senderId: string;
@@ -62,6 +71,7 @@ export interface Message {
   readAt?: string;
   isDeleted?: boolean;
   editedAt?: string;
+  replyTo?: MessageReply;
   createdAt: string;
 }
 

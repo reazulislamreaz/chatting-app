@@ -17,6 +17,14 @@ export interface MessagePayload {
   read: boolean;
   isDeleted?: boolean;
   editedAt?: Date;
+  replyTo?: {
+    id: string;
+    senderId: string;
+    content: string;
+    imageUrl?: string;
+    voiceUrl?: string;
+    isDeleted?: boolean;
+  };
   createdAt: Date;
 }
 
@@ -46,4 +54,16 @@ export function emitMessageUpdated(message: MessagePayload): void {
 
 export function emitMessageDeleted(message: MessagePayload): void {
   emitToParticipants(message, "message_deleted", message);
+}
+
+export function emitConversationDeleted(
+  userId: string,
+  otherUserId: string
+): void {
+  if (!io) return;
+  const payload = { otherUserId };
+  io.to(`user:${userId}`).emit("conversation_deleted", payload);
+  io.to(`user:${otherUserId}`).emit("conversation_deleted", {
+    otherUserId: userId,
+  });
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/AppLayout";
 import { CreatePost } from "@/components/CreatePost";
@@ -9,6 +10,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { FeedSkeleton, PostCardSkeleton } from "@/components/skeletons";
 import { queryKeys } from "@/lib/queryKeys";
 import { useFeedInfiniteQuery } from "@/hooks/queries";
+import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
 import { useAuth } from "@/context/AuthContext";
 import type { Post } from "@/types";
 
@@ -25,6 +27,17 @@ export default function FeedPage() {
   } = useFeedInfiniteQuery();
 
   const posts = data?.pages.flatMap((page) => page.posts) ?? [];
+
+  const loadMorePosts = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
+    }
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  const loadMoreRef = useIntersectionObserver(loadMorePosts, {
+    enabled: hasNextPage && !isPending && posts.length > 0,
+    rootMargin: "200px",
+  });
 
   const handlePostCreated = (post: Post) => {
     queryClient.setQueryData(
@@ -134,17 +147,13 @@ export default function FeedPage() {
                   ))}
                 </div>
                 {hasNextPage && (
-                  <div className="space-y-4 pb-4">
+                  <div ref={loadMoreRef} className="space-y-4 pb-4">
                     {isFetchingNextPage && <PostCardSkeleton />}
-                    <div className="flex justify-center">
-                      <button
-                        onClick={() => fetchNextPage()}
-                        disabled={isFetchingNextPage}
-                        className="btn-secondary"
-                      >
-                        {isFetchingNextPage ? "Loading more…" : "Load more posts"}
-                      </button>
-                    </div>
+                    {!isFetchingNextPage && (
+                      <p className="py-2 text-center text-sm text-slate-400">
+                        Scroll for more posts
+                      </p>
+                    )}
                   </div>
                 )}
               </>

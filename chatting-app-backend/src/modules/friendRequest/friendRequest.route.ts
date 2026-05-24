@@ -17,5 +17,6 @@ router.patch(
   validate(respondRequestSchema),
   friendRequestController.respondToRequest
 );
+router.delete("/:id", friendRequestController.cancelRequest);
 
 export default router;

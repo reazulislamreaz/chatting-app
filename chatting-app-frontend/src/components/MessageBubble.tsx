@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getUploadUrl } from "@/lib/api";
+import { getReplyPreviewText } from "@/lib/replyPreview";
 import { VoiceMessagePlayer } from "@/components/VoiceMessagePlayer";
 import { CallLogBubble } from "@/components/CallLogBubble";
 import type { Message } from "@/types";
@@ -11,9 +12,45 @@ interface MessageBubbleProps {
   isOwn: boolean;
   onEdit?: (message: Message) => void;
   onDelete?: (messageId: string) => void;
+  onReply?: (message: Message) => void;
 }
 
-export function MessageBubble({ message, isOwn, onEdit, onDelete }: MessageBubbleProps) {
+function ReplyQuote({
+  reply,
+  isOwn,
+}: {
+  reply: NonNullable<Message["replyTo"]>;
+  isOwn: boolean;
+}) {
+  const preview = getReplyPreviewText(reply);
+
+  return (
+    <div
+      className={`mb-1 rounded-lg border-l-4 px-2.5 py-1.5 ${
+        isOwn
+          ? "border-brand-700/40 bg-brand-700/10"
+          : "border-brand-500 bg-brand-50/80"
+      }`}
+    >
+      <p
+        className={`text-xs font-semibold ${
+          isOwn ? "text-brand-900/80" : "text-brand-700"
+        }`}
+      >
+        Replied message
+      </p>
+      <p className="mt-0.5 line-clamp-2 text-xs text-slate-600">{preview}</p>
+    </div>
+  );
+}
+
+export function MessageBubble({
+  message,
+  isOwn,
+  onEdit,
+  onDelete,
+  onReply,
+}: MessageBubbleProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const imageSrc = message.imageUrl ? getUploadUrl(message.imageUrl) : "";
   const hasVoice = Boolean(message.voiceUrl);
@@ -22,6 +59,8 @@ export function MessageBubble({ message, isOwn, onEdit, onDelete }: MessageBubbl
     hour: "2-digit",
     minute: "2-digit",
   });
+  const canReply = onReply && !message.isDeleted && message.messageType !== "call";
+  const showMenu = isOwn ? onEdit || onDelete || canReply : canReply;
 
   if (message.isDeleted) {
     return (
@@ -47,8 +86,12 @@ export function MessageBubble({ message, isOwn, onEdit, onDelete }: MessageBubbl
   return (
     <div className={`group flex ${isOwn ? "justify-end" : "justify-start"}`}>
       <div className="relative max-w-[88%] xs:max-w-[85%] sm:max-w-[72%]">
-        {isOwn && (onEdit || onDelete) && (
-          <div className="absolute -left-8 top-1 opacity-100 md:opacity-0 md:transition md:group-hover:opacity-100">
+        {showMenu && (
+          <div
+            className={`absolute top-1 opacity-100 md:opacity-0 md:transition md:group-hover:opacity-100 ${
+              isOwn ? "-left-8" : "-right-8"
+            }`}
+          >
             <button
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
@@ -62,8 +105,24 @@ export function MessageBubble({ message, isOwn, onEdit, onDelete }: MessageBubbl
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute bottom-full left-0 z-20 mb-1 min-w-[120px] overflow-hidden rounded-xl border border-surface-border bg-white py-1 shadow-lg">
-                  {onEdit && (
+                <div
+                  className={`absolute bottom-full z-20 mb-1 min-w-[120px] overflow-hidden rounded-xl border border-surface-border bg-white py-1 shadow-lg ${
+                    isOwn ? "left-0" : "right-0"
+                  }`}
+                >
+                  {canReply && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onReply(message);
+                      }}
+                      className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      Reply
+                    </button>
+                  )}
+                  {isOwn && onEdit && (
                     <button
                       type="button"
                       onClick={() => {
@@ -75,7 +134,7 @@ export function MessageBubble({ message, isOwn, onEdit, onDelete }: MessageBubbl
                       Edit
                     </button>
                   )}
-                  {onDelete && (
+                  {isOwn && onDelete && (
                     <button
                       type="button"
                       onClick={() => {
@@ -100,6 +159,11 @@ export function MessageBubble({ message, isOwn, onEdit, onDelete }: MessageBubbl
               : "rounded-2xl rounded-bl-sm bg-wa-bubbleIn text-slate-900 shadow-card"
           }`}
         >
+          {message.replyTo && (
+            <div className="px-3 pt-2">
+              <ReplyQuote reply={message.replyTo} isOwn={isOwn} />
+            </div>
+          )}
           {imageSrc && (
             <a href={imageSrc} target="_blank" rel="noopener noreferrer" className="block">
               <img

@@ -8,7 +8,10 @@ import { isRedisEnabled } from "./config/redis";
 import { corsOriginValidator } from "./config/cors";
 import { errorHandler } from "./middleware/errorHandler";
 import { notFoundHandler } from "./middleware/notFoundHandler";
-import { apiRateLimiter, authRateLimiter } from "./middleware/rateLimit.middleware";
+import {
+  apiRateLimiter,
+  authRateLimiter,
+} from "./middleware/rateLimit.middleware";
 import authRoutes from "./modules/auth/auth.route";
 import userRoutes from "./modules/user/user.route";
 import friendRequestRoutes from "./modules/friendRequest/friendRequest.route";
@@ -27,12 +30,15 @@ app.use(
   cors({
     origin: corsOriginValidator,
     credentials: true,
-  })
+  }),
 );
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
-app.use("/api", apiRateLimiter);
-app.use("/uploads", express.static(path.resolve(process.cwd(), env.UPLOAD_DIR)));
+// app.use("/api", apiRateLimiter);
+app.use(
+  "/uploads",
+  express.static(path.resolve(process.cwd(), env.UPLOAD_DIR)),
+);
 
 app.get("/health", async (_req, res) => {
   const redisOk = isRedisEnabled() ? await cache.ping() : null;

@@ -1,10 +1,14 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "./Avatar";
 import { CommentListSkeleton } from "@/components/skeletons";
 import { EditPostModal } from "./EditPostModal";
 import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
+import { useCommentsInfiniteQuery } from "@/hooks/queries";
+import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
 import { toastError, toastSuccess } from "@/lib/toast";
 import type { Post, PostComment, ApiResponse } from "@/types";
 
@@ -28,10 +32,9 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, onUpdate, onRemove, currentUserId }: PostCardProps) {
+  const queryClient = useQueryClient();
   const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState<PostComment[]>([]);
   const [commentText, setCommentText] = useState("");
-  const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [liking, setLiking] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -39,26 +42,56 @@ export function PostCard({ post, onUpdate, onRemove, currentUserId }: PostCardPr
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState("");
 
+  const {
+    data: commentsData,
+    isPending: loadingComments,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useCommentsInfiniteQuery(post.id, showComments);
+
+  const comments =
+    commentsData?.pages.flatMap((page) => page.comments) ?? [];
+
+  const loadMoreComments = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
+    }
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  const commentsSentinelRef = useIntersectionObserver(loadMoreComments, {
+    enabled: showComments && hasNextPage && comments.length > 0,
+    rootMargin: "80px",
+  });
+
+  const setComments = (
+    updater: PostComment[] | ((prev: PostComment[]) => PostComment[]),
+  ) => {
+    queryClient.setQueryData(
+      queryKeys.comments(post.id),
+      (
+        old:
+          | {
+              pages: { comments: PostComment[]; pagination: { page: number; totalPages: number } }[];
+              pageParams: number[];
+            }
+          | undefined,
+      ) => {
+        if (!old?.pages.length) return old;
+        const current = old.pages.flatMap((page) => page.comments);
+        const next =
+          typeof updater === "function" ? updater(current) : updater;
+        return {
+          ...old,
+          pages: old.pages.map((page, index) =>
+            index === 0 ? { ...page, comments: next } : page,
+          ),
+        };
+      },
+    );
+  };
+
   const isOwner = currentUserId === post.author.id;
-
-  useEffect(() => {
-    if (!showComments) return;
-
-    let cancelled = false;
-    setLoadingComments(true);
-
-    api<ApiResponse<{ comments: PostComment[] }>>(`/posts/${post.id}/comments`)
-      .then((res) => {
-        if (!cancelled) setComments(res.data.comments);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingComments(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [showComments, post.id]);
 
   const handleLike = async () => {
     if (liking) return;
@@ -344,6 +377,15 @@ export function PostCard({ post, onUpdate, onRemove, currentUserId }: PostCardPr
                     </div>
                   </div>
                 ))
+              )}
+              {hasNextPage && (
+                <div ref={commentsSentinelRef} className="py-2 text-center">
+                  {isFetchingNextPage ? (
+                    <span className="text-xs text-slate-400">Loading more comments…</span>
+                  ) : (
+                    <span className="text-xs text-slate-400">Scroll for more comments</span>
+                  )}
+                </div>
               )}
             </div>
           )}

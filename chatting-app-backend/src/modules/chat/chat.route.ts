@@ -6,5 +6,6 @@ const router = Router();
 
 router.use(authenticate);
 router.get("/", chatController.getChatList);
+router.delete("/:userId", chatController.deleteConversation);
 
 export default router;

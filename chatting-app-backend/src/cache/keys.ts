@@ -32,6 +32,10 @@ export const keys = {
     const [x, y] = sortedPair(a, b);
     return `messages:${x}:${y}:p${page}`;
   },
+  messagesLatest: (a: string, b: string) => {
+    const [x, y] = sortedPair(a, b);
+    return `messages:${x}:${y}:latest`;
+  },
   unread: (receiverId: string, senderId: string) =>
     `unread:${receiverId}:${senderId}`,
   feedGlobalVersion: () => "feed:global:v",

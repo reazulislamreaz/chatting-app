@@ -16,7 +16,7 @@ import { MAX_VOICE_DURATION_SECONDS } from "../../constants/limits";
 import type { CallLogStatus } from "../../constants/call";
 import { emitReceiveMessage } from "../../socket/message.events";
 
-function formatMessage(message: {
+type MessageDoc = {
   _id: { toString(): string };
   senderId: { toString(): string };
   receiverId: { toString(): string };
@@ -30,8 +30,36 @@ function formatMessage(message: {
   read: boolean;
   isDeleted?: boolean;
   editedAt?: Date;
+  replyToId?: { toString(): string };
   createdAt: Date;
-}): MessagePayload {
+};
+
+type ReplyPreview = NonNullable<MessagePayload["replyTo"]>;
+
+function formatReplyPreview(message: MessageDoc): ReplyPreview {
+  const isDeleted = Boolean(message.isDeleted);
+  return {
+    id: message._id.toString(),
+    senderId: message.senderId.toString(),
+    content: isDeleted ? "" : message.content || "",
+    imageUrl: isDeleted
+      ? undefined
+      : message.imageUrl
+        ? resolveImageUrl(message.imageUrl)
+        : undefined,
+    voiceUrl: isDeleted
+      ? undefined
+      : message.voiceUrl
+        ? resolveImageUrl(message.voiceUrl)
+        : undefined,
+    isDeleted,
+  };
+}
+
+function formatMessage(
+  message: MessageDoc,
+  replyMap?: Map<string, ReplyPreview>
+): MessagePayload {
   const isDeleted = Boolean(message.isDeleted);
   const isCall = message.messageType === "call";
 
@@ -57,8 +85,39 @@ function formatMessage(message: {
     read: message.read,
     isDeleted,
     editedAt: message.editedAt,
+    replyTo: message.replyToId
+      ? replyMap?.get(message.replyToId.toString())
+      : undefined,
     createdAt: message.createdAt,
   };
+}
+
+async function buildReplyMap(messages: MessageDoc[]) {
+  const replyIds = [
+    ...new Set(
+      messages
+        .map((message) => message.replyToId?.toString())
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+
+  const replyMap = new Map<string, ReplyPreview>();
+  if (replyIds.length === 0) return replyMap;
+
+  const replies = await Message.find({ _id: { $in: replyIds } })
+    .select(MESSAGE_LIST_SELECT)
+    .lean();
+
+  for (const reply of replies) {
+    replyMap.set(reply._id.toString(), formatReplyPreview(reply as MessageDoc));
+  }
+
+  return replyMap;
+}
+
+async function formatMessagesWithReplies(messages: MessageDoc[]) {
+  const replyMap = await buildReplyMap(messages);
+  return messages.map((message) => formatMessage(message, replyMap));
 }
 
 async function getOwnedMessage(messageId: string, userId: string) {
@@ -85,7 +144,8 @@ export class MessageService {
     content = "",
     imageFile?: Express.Multer.File,
     voiceFile?: Express.Multer.File,
-    voiceDuration = 0
+    voiceDuration = 0,
+    replyToId?: string
   ): Promise<MessagePayload> {
     const areFriends = await friendRequestService.areFriends(senderId, receiverId);
     if (!areFriends) {
@@ -123,6 +183,28 @@ export class MessageService {
       voiceUrl = await uploadAudioToS3(voiceFile, "messages");
     }
 
+    let validatedReplyToId: string | undefined;
+    if (replyToId) {
+      const replyMessage = await Message.findById(replyToId)
+        .select("senderId receiverId messageType")
+        .lean();
+      if (!replyMessage) {
+        throw new AppError(404, "Reply message not found");
+      }
+      if (replyMessage.messageType === "call") {
+        throw new AppError(400, "Cannot reply to call history");
+      }
+      const inConversation =
+        (replyMessage.senderId.toString() === senderId &&
+          replyMessage.receiverId.toString() === receiverId) ||
+        (replyMessage.senderId.toString() === receiverId &&
+          replyMessage.receiverId.toString() === senderId);
+      if (!inConversation) {
+        throw new AppError(400, "Reply message is not in this conversation");
+      }
+      validatedReplyToId = replyToId;
+    }
+
     const message = await Message.create({
       senderId,
       receiverId,
@@ -131,11 +213,13 @@ export class MessageService {
       imageUrl,
       voiceUrl,
       voiceDuration: duration,
+      replyToId: validatedReplyToId,
     });
 
     await cacheInvalidate.onNewMessage(senderId, receiverId);
 
-    return formatMessage(message as IMessage);
+    const [formatted] = await formatMessagesWithReplies([message as MessageDoc]);
+    return formatted;
   }
 
   async updateMessage(
@@ -211,11 +295,16 @@ export class MessageService {
     userId: string,
     otherUserId: string,
     page = 1,
-    limit = 50
+    limit = 50,
+    before?: string
   ) {
     const areFriends = await friendRequestService.areFriends(userId, otherUserId);
     if (!areFriends) {
       throw new AppError(403, "You can only view messages with friends");
+    }
+
+    if (before) {
+      return this.fetchConversationBefore(userId, otherUserId, before, limit);
     }
 
     if (page <= 3) {
@@ -229,18 +318,120 @@ export class MessageService {
     return this.fetchConversation(userId, otherUserId, page, limit);
   }
 
+  async getLatestMessages(userId: string, otherUserId: string, limit = 50) {
+    const areFriends = await friendRequestService.areFriends(userId, otherUserId);
+    if (!areFriends) {
+      throw new AppError(403, "You can only view messages with friends");
+    }
+
+    return cache.getOrSet(
+      keys.messagesLatest(userId, otherUserId),
+      TTL.MESSAGES_PAGE,
+      () => this.fetchLatestMessages(userId, otherUserId, limit)
+    );
+  }
+
+  private conversationFilter(userId: string, otherUserId: string) {
+    return {
+      $or: [
+        { senderId: userId, receiverId: otherUserId },
+        { senderId: otherUserId, receiverId: userId },
+      ],
+    };
+  }
+
+  private async fetchLatestMessages(
+    userId: string,
+    otherUserId: string,
+    limit: number
+  ) {
+    const conversationFilter = this.conversationFilter(userId, otherUserId);
+
+    const messages = await Message.find(conversationFilter)
+      .select(MESSAGE_LIST_SELECT)
+      .sort({ createdAt: -1 })
+      .limit(limit + 1)
+      .lean();
+
+    const hasMore = messages.length > limit;
+    const pageMessages = hasMore ? messages.slice(0, limit) : messages;
+    const chronological = await formatMessagesWithReplies(
+      pageMessages.reverse() as MessageDoc[]
+    );
+
+    return {
+      messages: chronological,
+      pagination: {
+        limit,
+        hasMore,
+        nextCursor:
+          hasMore && chronological.length > 0 ? chronological[0].id : undefined,
+      },
+    };
+  }
+
+  private async fetchConversationBefore(
+    userId: string,
+    otherUserId: string,
+    before: string,
+    limit: number
+  ) {
+    const conversationFilter = this.conversationFilter(userId, otherUserId);
+    const cursorMessage = await Message.findById(before)
+      .select("createdAt senderId receiverId")
+      .lean();
+
+    if (!cursorMessage) {
+      throw new AppError(404, "Message not found");
+    }
+
+    const isInConversation =
+      (cursorMessage.senderId.toString() === userId &&
+        cursorMessage.receiverId.toString() === otherUserId) ||
+      (cursorMessage.senderId.toString() === otherUserId &&
+        cursorMessage.receiverId.toString() === userId);
+
+    if (!isInConversation) {
+      throw new AppError(403, "Not authorized to view this conversation");
+    }
+
+    const filter = {
+      $and: [
+        conversationFilter,
+        { createdAt: { $lt: cursorMessage.createdAt } },
+      ],
+    };
+
+    const messages = await Message.find(filter)
+      .select(MESSAGE_LIST_SELECT)
+      .sort({ createdAt: -1 })
+      .limit(limit + 1)
+      .lean();
+
+    const hasMore = messages.length > limit;
+    const pageMessages = hasMore ? messages.slice(0, limit) : messages;
+    const chronological = await formatMessagesWithReplies(
+      pageMessages.reverse() as MessageDoc[]
+    );
+
+    return {
+      messages: chronological,
+      pagination: {
+        limit,
+        hasMore,
+        nextCursor:
+          hasMore && chronological.length > 0 ? chronological[0].id : undefined,
+      },
+    };
+  }
+
   private async fetchConversation(
     userId: string,
     otherUserId: string,
     page: number,
     limit: number
   ) {
-    const conversationFilter = {
-      $or: [
-        { senderId: userId, receiverId: otherUserId },
-        { senderId: otherUserId, receiverId: userId },
-      ],
-    };
+    const conversationFilter = this.conversationFilter(userId, otherUserId);
 
     const skip = (page - 1) * limit;
 
@@ -255,7 +446,7 @@ export class MessageService {
     ]);
 
     return {
-      messages: messages.reverse().map((m) => formatMessage(m)),
+      messages: await formatMessagesWithReplies(messages.reverse() as MessageDoc[]),
       pagination: {
         page,
         limit,
@@ -263,6 +454,37 @@ export class MessageService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  async deleteConversation(userId: string, otherUserId: string) {
+    const areFriends = await friendRequestService.areFriends(userId, otherUserId);
+    if (!areFriends) {
+      throw new AppError(403, "You can only delete conversations with friends");
+    }
+
+    const conversationFilter = this.conversationFilter(userId, otherUserId);
+    const messages = await Message.find(conversationFilter)
+      .select("imageUrl voiceUrl")
+      .lean();
+
+    await Promise.all(
+      messages.flatMap((message) => {
+        const tasks: Promise<void>[] = [];
+        if (message.imageUrl) {
+          tasks.push(deleteFromS3ByUrl(resolveImageUrl(message.imageUrl)));
+        }
+        if (message.voiceUrl) {
+          tasks.push(deleteFromS3ByUrl(resolveImageUrl(message.voiceUrl)));
+        }
+        return tasks;
+      })
+    );
+
+    await Message.deleteMany(conversationFilter);
+    await cacheInvalidate.messages(userId, otherUserId);
+    await cacheInvalidate.chatLists(userId, otherUserId);
+
+    return { deletedCount: messages.length };
   }
 
   async markAsRead(receiverId: string, senderId: string) {

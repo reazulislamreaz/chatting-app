@@ -8,4 +8,5 @@ export const queryKeys = {
   friendReceived: ["friend-requests", "received"] as const,
   friendSent: ["friend-requests", "sent"] as const,
   messages: (userId: string) => ["messages", userId] as const,
+  comments: (postId: string) => ["comments", postId] as const,
 };

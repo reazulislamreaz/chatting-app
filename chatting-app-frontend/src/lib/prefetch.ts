@@ -1,7 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
-import type { ApiResponse, ChatListItem, Message, User } from "@/types";
+import type { ApiResponse, ChatListItem, User } from "@/types";
+import type { MessagesPage } from "@/hooks/queries";
 
 export function prefetchUserProfile(qc: QueryClient, userId: string) {
   if (!userId) return;
@@ -17,14 +18,18 @@ export function prefetchUserProfile(qc: QueryClient, userId: string) {
 
 export function prefetchMessages(qc: QueryClient, otherUserId: string) {
   if (!otherUserId) return;
-  void qc.prefetchQuery({
+  void qc.prefetchInfiniteQuery({
     queryKey: queryKeys.messages(otherUserId),
     queryFn: async () => {
-      const res = await api<ApiResponse<{ messages: Message[] }>>(
+      const res = await api<ApiResponse<MessagesPage>>(
         `/messages/${otherUserId}?limit=30`,
       );
-      return res.data.messages;
+      return res.data;
     },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) =>
+      last.pagination.hasMore ? last.pagination.nextCursor : undefined,
+    pages: 1,
     staleTime: 30 * 1000,
   });
 }

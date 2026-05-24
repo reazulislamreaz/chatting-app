@@ -65,6 +65,46 @@
     @apply rounded-2xl border border-surface-border bg-white p-4 shadow-card sm:p-5 lg:p-6;
   }
 
+  .form-card {
+    @apply card overflow-hidden p-0;
+  }
+
+  .form-card-header {
+    @apply border-b border-surface-border bg-gradient-to-br from-slate-50/90 to-white px-4 py-4 sm:px-6 sm:py-5;
+  }
+
+  .form-card-body {
+    @apply space-y-5 px-4 py-5 sm:space-y-6 sm:px-6 sm:py-6;
+  }
+
+  .form-field {
+    @apply mx-0.5 sm:mx-1;
+  }
+
+  .form-label {
+    @apply mb-2 block text-sm font-medium text-slate-700;
+  }
+
+  .form-hint {
+    @apply mt-1.5 text-xs leading-relaxed text-slate-400;
+  }
+
+  .form-grid-2 {
+    @apply grid gap-4 sm:grid-cols-2 sm:gap-5;
+  }
+
+  .form-group {
+    @apply space-y-4 rounded-xl border border-surface-border bg-slate-50/60 p-4 sm:p-5;
+  }
+
+  .form-actions {
+    @apply flex flex-col gap-3 border-t border-surface-border bg-slate-50/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6 sm:py-5;
+  }
+
+  .form-file-input {
+    @apply w-full rounded-xl border border-dashed border-surface-border bg-white px-4 py-3 text-sm text-slate-500 transition file:mr-4 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:border-brand-300 hover:bg-brand-50/30 hover:file:bg-brand-100;
+  }
+
   .tab-pills {
     @apply flex flex-wrap gap-2;
   }

@@ -11,7 +11,7 @@ import {
 
 export class MessageController {
   sendMessage = asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { receiverId, content, voiceDuration } = req.body;
+    const { receiverId, content, voiceDuration, replyToId } = req.body;
     const files = req.files as
       | { image?: Express.Multer.File[]; voice?: Express.Multer.File[] }
       | undefined;
@@ -21,7 +21,8 @@ export class MessageController {
       content,
       files?.image?.[0],
       files?.voice?.[0],
-      voiceDuration
+      voiceDuration,
+      replyToId
     );
     emitReceiveMessage(message);
     res.status(201).json({ success: true, data: message });
@@ -51,14 +52,32 @@ export class MessageController {
 
   getConversation = asyncHandler(async (req: AuthRequest, res: Response) => {
     const query = req.query as Record<string, string | undefined>;
-    const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 50;
-    const result = await messageService.getConversation(
-      req.user!.userId,
-      getParamId(req.params.userId),
-      page,
-      limit
-    );
+    const before = query.before;
+    const userId = req.user!.userId;
+    const otherUserId = getParamId(req.params.userId);
+
+    let result;
+    if (before) {
+      result = await messageService.getConversation(
+        userId,
+        otherUserId,
+        1,
+        limit,
+        before,
+      );
+    } else if (query.page === undefined) {
+      result = await messageService.getLatestMessages(userId, otherUserId, limit);
+    } else {
+      const page = Number(query.page) || 1;
+      result = await messageService.getConversation(
+        userId,
+        otherUserId,
+        page,
+        limit,
+      );
+    }
+
     res.json({ success: true, data: result });
   });
 

@@ -65,6 +65,22 @@ export default function UserDetailPage() {
     }
   };
 
+  const cancelRequest = async () => {
+    if (!profile?.relationship?.requestId) return;
+    setActionLoading(true);
+    try {
+      await api(`/friend-requests/${profile.relationship.requestId}`, {
+        method: "DELETE",
+      });
+      toastSuccess("Friend request cancelled");
+      await invalidateSocial(queryClient, userId);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Failed to cancel request");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const relationship = profile?.relationship?.status ?? "none";
   const age = getAge(profile?.dateOfBirth);
   const isSelf = currentUser?.id === userId;
@@ -137,8 +153,13 @@ export default function UserDetailPage() {
                     </button>
                   )}
                   {relationship === "pending_sent" && (
-                    <button type="button" disabled className="btn-secondary w-full">
-                      Friend request sent
+                    <button
+                      type="button"
+                      onClick={cancelRequest}
+                      disabled={actionLoading}
+                      className="btn-secondary w-full"
+                    >
+                      {actionLoading ? "Cancelling..." : "Cancel request"}
                     </button>
                   )}
                   {relationship === "pending_received" && (

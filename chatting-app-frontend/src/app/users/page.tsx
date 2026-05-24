@@ -17,6 +17,7 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sendingTo, setSendingTo] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
@@ -51,6 +52,19 @@ export default function UsersPage() {
       toastError(err instanceof Error ? err.message : "Failed to send request");
     } finally {
       setSendingTo(null);
+    }
+  };
+
+  const cancelRequest = async (requestId: string) => {
+    setCancellingId(requestId);
+    try {
+      await api(`/friend-requests/${requestId}`, { method: "DELETE" });
+      toastSuccess("Friend request cancelled");
+      await invalidateSocial(queryClient);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Failed to cancel request");
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -135,7 +149,9 @@ export default function UsersPage() {
                     key={u.id}
                     user={u}
                     onAddFriend={sendRequest}
+                    onCancelRequest={cancelRequest}
                     sendingRequest={sendingTo === u.id}
+                    cancellingRequest={cancellingId === u.relationship?.requestId}
                   />
                 ))}
               </div>

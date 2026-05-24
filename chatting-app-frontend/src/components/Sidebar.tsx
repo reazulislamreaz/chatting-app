@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { prefetchChats } from "@/lib/prefetch";
 import { Avatar } from "./Avatar";
+import { SignOutButton } from "./SignOutButton";
 
 const navItems = [
   {
@@ -124,7 +125,7 @@ function NavLink({
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const isChatDetail = pathname.startsWith("/chat/") && pathname !== "/chat";
 
@@ -134,7 +135,6 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Desktop & tablet sidebar */}
       <aside className="hidden h-full w-64 shrink-0 flex-col border-r border-surface-border bg-white md:flex lg:w-72 xl:w-80">
         <div className="border-b border-surface-border bg-brand-700 p-4 text-white lg:p-5">
           <div className="mb-4 flex items-center gap-2">
@@ -170,19 +170,10 @@ export function Sidebar() {
         </nav>
 
         <div className="border-t border-surface-border p-3 lg:p-4">
-          <button
-            onClick={logout}
-            className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Sign out
-          </button>
+          <SignOutButton />
         </div>
       </aside>
 
-      {/* Mobile bottom nav */}
       {!isChatDetail && (
         <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-surface-border bg-white/95 backdrop-blur-lg safe-bottom md:hidden">
           <div className="mx-auto grid max-w-lg grid-cols-6 gap-0.5 px-1 py-1.5 xs:gap-1 xs:px-2 xs:py-2">
