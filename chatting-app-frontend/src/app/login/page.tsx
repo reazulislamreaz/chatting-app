@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { APP_NAME } from "@/lib/appConfig";
 import { AuthShell } from "@/components/AuthShell";
 import { Spinner } from "@/components/Spinner";
 import { toastError } from "@/lib/toast";
@@ -28,7 +29,7 @@ export default function LoginPage() {
   return (
     <AuthShell
       title="Welcome back"
-      subtitle="Sign in to continue your conversations"
+      subtitle={`Sign in to ${APP_NAME}`}
       footer={
         <>
           Don&apos;t have an account?{" "}

@@ -1,4 +1,4 @@
-# Real-Time Chat Application
+# Connectify
 
 Production-ready monorepo chat app with Next.js frontend, Express backend, MongoDB, and Socket.IO.
 

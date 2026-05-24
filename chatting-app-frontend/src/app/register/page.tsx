@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { APP_NAME } from "@/lib/appConfig";
 import { AuthShell } from "@/components/AuthShell";
 import { Spinner } from "@/components/Spinner";
 import { toastError } from "@/lib/toast";
@@ -29,7 +30,7 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Create account"
-      subtitle="Join ChatFlow and start connecting"
+      subtitle={`Join ${APP_NAME} and start connecting`}
       footer={
         <>
           Already have an account?{" "}
